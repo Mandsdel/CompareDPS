@@ -388,7 +388,8 @@ local function itemComparison(tooltip, location, candidateScore, weights)
         end
         local journalItem = info.getterName == "GetHyperlink" and not secret(info.compareItem)
             and info.compareItem == true
-        if info.getterName ~= "GetBagItem" and not journalItem then
+        if info.getterName ~= "GetBagItem" and info.getterName ~= "GetQuestItem"
+            and info.getterName ~= "GetQuestLogItem" and not journalItem then
             return nil
         end
     end

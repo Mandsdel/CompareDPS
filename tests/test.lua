@@ -157,6 +157,12 @@ assert(tooltip("item:11"):find("Waist: 12.00 points", 1, true))
 GameTooltip.info = { getterName = "GetBagItem" }
 local baggedRing = tooltip("item:1")
 assert(baggedRing:find("Ring: 18.00 points (slot 1: |cff40ff40+9.00|r, slot 2: +0.00)", 1, true), baggedRing)
+for _, getter in ipairs({ "GetQuestItem", "GetQuestLogItem" }) do
+    GameTooltip.info = { getterName = getter, getterArgs = { "choice", 1 } }
+    local reward = tooltip("item:1")
+    assert(reward:find("Ring: 18.00 points (slot 1: |cff40ff40+9.00|r, slot 2: +0.00)", 1, true), reward)
+end
+GameTooltip.info = { getterName = "GetBagItem" }
 equipped[12] = nil
 assert(tooltip("item:1"):find("(slot 1: |cff40ff40+9.00|r, slot 2: |cff40ff40+18.00|r)", 1, true))
 equipped[11] = "item:1"
