@@ -17,7 +17,7 @@ end
 local function makeWindow()
     if window then return end
     window = CreateFrame("Frame", "CompareDPSOptions", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-    window:SetSize(340, 170)
+    window:SetSize(380, 190)
     window:SetPoint("CENTER")
     window:SetFrameStrata("DIALOG")
     window:SetClampedToScreen(true)
@@ -49,12 +49,12 @@ local function makeWindow()
     label:SetText("Specialization:")
 
     dropdown = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
-    dropdown:SetSize(170, 24)
+    dropdown:SetSize(210, 24)
     dropdown:SetPoint("LEFT", label, "RIGHT", 12, 0)
 
     menu = CreateFrame("Frame", nil, window)
     menu:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
-    menu:SetWidth(170)
+    menu:SetWidth(210)
     menu:SetFrameLevel(dropdown:GetFrameLevel() + 2)
     menu:Hide()
 
@@ -74,7 +74,7 @@ local function makeWindow()
             local choice = items[i]
             if not choice then
                 choice = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate")
-                choice:SetSize(170, 24)
+                choice:SetSize(210, 24)
                 choice:SetPoint("TOPLEFT", menu, "TOPLEFT", 0, -(i - 1) * 24)
                 items[i] = choice
             end

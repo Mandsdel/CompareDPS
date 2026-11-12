@@ -24,6 +24,14 @@ local comparisonSlots = {
 }
 
 local statKeys = {
+    ITEM_MOD_STRENGTH_SHORT = "str",
+    ITEM_MOD_AGILITY_SHORT = "agi",
+    ITEM_MOD_ATTACK_POWER_SHORT = "ap",
+    ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "rap",
+    ITEM_MOD_FERAL_ATTACK_POWER_SHORT = "fap",
+    ITEM_MOD_DAMAGE_PER_SECOND_SHORT = "weaponDps",
+    ITEM_MOD_MANA_SHORT = "mana",
+    ITEM_MOD_HEALTH_SHORT = "health",
     ITEM_MOD_INTELLECT_SHORT = "int",
     ITEM_MOD_SPIRIT_SHORT = "spirit",
     ITEM_MOD_STAMINA_SHORT = "stamina",
@@ -31,16 +39,41 @@ local statKeys = {
     ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "spellpower",
     ITEM_MOD_SHADOW_DAMAGE_DONE_SHORT = "shadow",
     ITEM_MOD_FIRE_DAMAGE_DONE_SHORT = "fire",
+    ITEM_MOD_FIRE_SPELL_POWER_SHORT = "fire",
+    ITEM_MOD_SHADOW_SPELL_POWER_SHORT = "shadow",
+    ITEM_MOD_FROST_SPELL_POWER_SHORT = "frost",
+    ITEM_MOD_ARCANE_SPELL_POWER_SHORT = "arcane",
+    ITEM_MOD_NATURE_SPELL_POWER_SHORT = "nature",
+    ITEM_MOD_HOLY_SPELL_POWER_SHORT = "holy",
+    ITEM_MOD_SPELL_HEALING_DONE_SHORT = "heal",
+    ITEM_MOD_HIT_RATING_SHORT = "hitrating",
+    ITEM_MOD_HIT_MELEE_RATING_SHORT = "hitrating",
+    ITEM_MOD_HIT_RANGED_RATING_SHORT = "hitrating",
     ITEM_MOD_HIT_SPELL_RATING_SHORT = "hitrating",
     ITEM_MOD_CRIT_SPELL_RATING_SHORT = "critrating",
+    ITEM_MOD_CRIT_RATING_SHORT = "critrating",
+    ITEM_MOD_CRIT_MELEE_RATING_SHORT = "critrating",
+    ITEM_MOD_CRIT_RANGED_RATING_SHORT = "critrating",
     ITEM_MOD_HASTE_SPELL_RATING_SHORT = "hasterating",
+    ITEM_MOD_HASTE_RATING_SHORT = "hasterating",
     ITEM_MOD_MANA_REGENERATION_SHORT = "mp5",
     ITEM_MOD_POWER_REGEN0_SHORT = "mp5",
+    ITEM_MOD_HEALTH_REGENERATION_SHORT = "hp5",
+    ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = "defenserating",
+    ITEM_MOD_DODGE_RATING_SHORT = "dodgerating",
+    ITEM_MOD_PARRY_RATING_SHORT = "parryrating",
+    ITEM_MOD_BLOCK_RATING_SHORT = "blockrating",
+    ITEM_MOD_BLOCK_VALUE_SHORT = "blockValue",
+    ITEM_MOD_EXTRA_ARMOR_SHORT = "armor",
+    RESISTANCE0_NAME = "armor",
 }
 
 local statOrder = {
-    "spellpower", "shadow", "fire", "int", "spirit", "stamina",
+    "str", "agi", "ap", "rap", "fap", "spellpower", "heal",
+    "shadow", "fire", "frost", "arcane", "nature", "holy", "int", "spirit", "stamina", "mana", "health",
     "hit", "crit", "haste", "hitrating", "critrating", "hasterating", "mp5",
+    "hp5", "armor", "defense", "defenserating", "dodge", "dodgerating",
+    "parry", "parryrating", "block", "blockrating", "blockValue",
 }
 local function secret(value)
     return type(issecretvalue) == "function" and issecretvalue(value)
@@ -134,8 +167,23 @@ local function tooltipStats(link)
         if not secret(text) and type(text) == "string" then
             text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):lower()
             local value
+            value = text:match("([%d%.]+)%s+damage per second")
+            if value then values.weaponDps = tonumber(value) end
+            local speed = text:match("speed%s+([%d%.]+)")
+            if speed and not text:find("attack speed", 1, true) then values.weaponSpeed = tonumber(speed) end
+            local right = type(line) == "table" and line.rightText
+            if not secret(right) and type(right) == "string" then
+                local speed = right:lower():match("speed%s+([%d%.]+)")
+                if speed then values.weaponSpeed = tonumber(speed) end
+            end
+            local armor = text:match("^(%d+)%s+armor$")
+            if armor then values.armor = tonumber(armor) end
             if text:find("equip:", 1, true) then
-                if text:find("damage and healing", 1, true)
+                local healing, damage = text:match("healing.-up to (%d+).-damage.-up to (%d+)")
+                if healing and damage then
+                    add(values, "heal", tonumber(healing))
+                    add(values, "spellpower", tonumber(damage))
+                elseif text:find("damage and healing", 1, true)
                     and text:find("spell", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "spellpower", tonumber(value)) end
@@ -145,15 +193,38 @@ local function tooltipStats(link)
                 elseif text:find("fire spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "fire", tonumber(value)) end
+                elseif text:find("frost spells", 1, true) then
+                    value = text:match("up to (%d+)")
+                    if value then add(values, "frost", tonumber(value)) end
+                elseif text:find("arcane spells", 1, true) then
+                    value = text:match("up to (%d+)")
+                    if value then add(values, "arcane", tonumber(value)) end
+                elseif text:find("nature spells", 1, true) then
+                    value = text:match("up to (%d+)")
+                    if value then add(values, "nature", tonumber(value)) end
+                elseif text:find("holy spells", 1, true) then
+                    value = text:match("up to (%d+)")
+                    if value then add(values, "holy", tonumber(value)) end
+                elseif text:find("healing", 1, true) then
+                    value = text:match("up to (%d+)")
+                    if value then add(values, "heal", tonumber(value)) end
                 end
-                if text:find("spell", 1, true) then
+                if not text:find("critical", 1, true) then
                     value = text:match("hit.-by (%d+%.?%d*)%%")
                     if value then add(values, "hit", tonumber(value)) end
-                    value = text:match("critical.-by (%d+%.?%d*)%%")
-                    if value then add(values, "crit", tonumber(value)) end
-                    value = text:match("haste.-by (%d+%.?%d*)%%")
-                    if value then add(values, "haste", tonumber(value)) end
                 end
+                value = text:match("critical.-by (%d+%.?%d*)%%")
+                if value then add(values, "crit", tonumber(value)) end
+                value = text:match("haste.-by (%d+%.?%d*)%%")
+                if value then add(values, "haste", tonumber(value)) end
+                for _, key in ipairs({ "dodge", "parry", "block" }) do
+                    value = text:match(key .. ".-by (%d+%.?%d*)%%")
+                    if value then add(values, key, tonumber(value)) end
+                end
+                value = text:match("defense skill.-by (%d+)")
+                if value then add(values, "defense", tonumber(value)) end
+                value = text:match("restores (%d+) mana per 5 sec")
+                if value then add(values, "mp5", tonumber(value)) end
             end
         end
     end
@@ -175,30 +246,72 @@ local function readStats(link)
     local extra = tooltipStats(link)
     if not extra then return nil end
     for key, value in pairs(extra) do
-        if stats[key] == nil then
+        if stats[key] == nil or key == "armor" then
             stats[key] = value
         end
     end
     -- A percentage on the tooltip and an API rating can describe the same stat.
-    for _, key in ipairs({ "hit", "crit", "haste" }) do
+    for _, key in ipairs({ "hit", "crit", "haste", "dodge", "parry", "block" }) do
         if stats[key] ~= nil then
             stats[key .. "rating"] = nil
+        end
+    end
+    for key, perPercent in pairs({ hit = 10, crit = 14, dodge = 12, parry = 15 }) do
+        local ratingKey = key .. "rating"
+        if stats[ratingKey] ~= nil then
+            stats[key] = stats[ratingKey] / perPercent
+            stats[ratingKey] = nil
         end
     end
     return stats
 end
 
-local function scoreItem(stats, weights)
+local function weaponKeys(location, slot)
+    if location == "INVTYPE_2HWEAPON" then return "dps2h", "speed2h" end
+    if location == "INVTYPE_RANGED" or location == "INVTYPE_RANGEDRIGHT" then
+        return "dpsRanged", "speedRanged"
+    end
+    if location == "INVTYPE_WEAPONOFFHAND" or (location == "INVTYPE_WEAPON" and slot == 17) then
+        return "dpsOH", "speedOH"
+    end
+    if location == "INVTYPE_WEAPON" or location == "INVTYPE_WEAPONMAINHAND" then
+        return "dpsMH", "speedMH"
+    end
+end
+
+local function scoreItem(stats, weights, location, slot)
     local score, missing = 0, {}
     for _, key in ipairs(statOrder) do
         local value = stats[key]
         if value and value ~= 0 then
             local weight = weights[key]
+            if key == "armor" and weight == nil then
+                weight = 0.005
+            elseif key == "health" and weight == nil and weights.stamina then
+                weight = weights.stamina / 10
+            elseif key == "mana" and weight == nil and weights.int then
+                weight = weights.int / 15
+            end
             if weight == nil then
                 missing[#missing + 1] = key
             else
                 score = score + value * weight
             end
+        end
+    end
+    local dpsKey, speedKey = weaponKeys(location, slot)
+    if dpsKey and weights[dpsKey] then
+        if stats.weaponDps then
+            score = score + stats.weaponDps * weights[dpsKey]
+        else
+            missing[#missing + 1] = "weapon DPS"
+        end
+    end
+    if speedKey and weights[speedKey] then
+        if stats.weaponSpeed then
+            score = score + (stats.weaponSpeed - 2) * weights[speedKey]
+        else
+            missing[#missing + 1] = "weapon speed"
         end
     end
     if #missing > 0 then
@@ -225,7 +338,7 @@ local function bagComparison(tooltip, location, candidateScore, weights)
             local stats = readStats(equipped)
             if not stats then return "equipped stats unavailable" end
             local missing
-            oldScore, missing = scoreItem(stats, weights)
+            oldScore, missing = scoreItem(stats, weights, itemLocation(equipped), slot)
             if missing then return "equipped item missing weights: " .. missing end
         end
 
@@ -243,7 +356,7 @@ local function bagComparison(tooltip, location, candidateScore, weights)
             if offhand then
                 local stats = readStats(offhand)
                 if not stats then return "off-hand stats unavailable" end
-                local offScore, missing = scoreItem(stats, weights)
+                local offScore, missing = scoreItem(stats, weights, itemLocation(offhand), 17)
                 if missing then return "off hand missing weights: " .. missing end
                 oldScore = oldScore + offScore
             end
@@ -291,7 +404,17 @@ local function compare(tooltip, data)
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
         return
     end
-    local candidateScore, candidateMissing = scoreItem(candidate, weights)
+    local info = type(tooltip.GetProcessingTooltipInfo) == "function" and tooltip:GetProcessingTooltipInfo()
+    local slot
+    if not secret(info) and type(info) == "table" and info.getterName == "GetInventoryItem"
+        and type(info.getterArgs) == "table" then
+        local inventorySlot = info.getterArgs[2]
+        if not secret(inventorySlot) and type(inventorySlot) == "number" then slot = inventorySlot end
+    end
+    if location == "INVTYPE_WEAPON" then
+        slotName = slot == 17 and "Off hand" or "Main hand"
+    end
+    local candidateScore, candidateMissing = scoreItem(candidate, weights, location, slot)
     if candidateMissing then
         tooltip:AddLine(slotName .. ": missing weights: " .. candidateMissing, 1, 0.7, 0.2)
     else

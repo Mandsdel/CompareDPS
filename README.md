@@ -1,9 +1,9 @@
 # CompareDPS
 
 An experimental **WoW Forever** addon that scores items using stat weights and
-compares them with equipped gear. Choose one of three Warlock presets; each
-character has its own selection.
-The Forever client has not yet been tested with this addon.
+compares them with equipped gear. Presets cover the nine Forever classes,
+including separate Feral DPS and tank profiles. Each character has its own
+selection. The additional class profiles have not yet been tested in-game.
 
 ## Install
 
@@ -28,7 +28,7 @@ If PowerShell blocks scripts, use
 Enable CompareDPS at character selection. If it is already enabled and the
 game is running, use `/reload` to load the updated files.
 
-## Warlock presets
+## Specialization presets
 
 Your class is detected automatically. Click the **CompareDPS minimap icon**
 to open its options, then choose your spec from the **Specialization** dropdown.
@@ -36,7 +36,7 @@ The selection is saved per character and takes effect on the next tooltip.
 The addon does not inspect talents or automatically detect your specialization.
 If your class has no profiles, the dropdown reports that none are available.
 
-The following commands are also available:
+The following commands are also available (for example):
 
 ```text
 /comparedps spec affliction
@@ -60,9 +60,9 @@ Gains are green, losses are red, and equal scores and equipped items are white.
 For rings and trinkets, each slot's difference is colored independently.
 
 The approximate weights come from [ForeverUpgrade's Warlock scales](https://github.com/DemiAutomatic/ForeverUpgrade/blob/main/Scales.lua).
-They are general spec-level starting points, not verified meta builds,
-character-specific simulations, or exact DPS. The source also has a ranged
-weapon DPS weight, which CompareDPS does **not** currently score. An absent
+The same source provides the scales for all other classes. They are general
+spec-level starting points, not verified meta builds, character-specific
+simulations, or exact DPS. An absent
 stat weight is not assumed to be zero: if it changes, the addon reports it.
 
 | Stat | Affliction | Demonology | Destruction |
@@ -79,9 +79,14 @@ stat weight is not assumed to be zero: if it changes, the addon reports it.
 
 These are relative gear-value weights: stamina and mana regeneration may
 include survivability or resource value, not just damage. In particular,
-fixed hit weights do not account for the hit cap. The preset does not provide
-rating-point weights; if the client returns rating rather than percentages,
-the addon reports the missing weight instead of guessing a conversion.
+fixed hit weights do not account for the hit cap. When the client returns
+Forever points instead of percentages, the source's approximate conversions
+are used: 10 hit, 14 crit, 12 dodge or 15 parry points per 1%. Its source
+notes that the character-sheet formula is unpublished. Haste, defense and
+block ratings are not converted; an item with these reports a missing weight.
+When no explicit armor weight exists, the source's 0.005 points per armor
+fallback is used. Health and mana use the source's stamina/10 and intellect/15
+fallbacks when no explicit weight exists.
 
 ## How it works and limitations
 
@@ -91,14 +96,20 @@ against the combined main-hand and off-hand scores. A bagged off-hand item
 cannot be compared when a two-handed weapon is equipped without choosing a
 replacement main-hand weapon.
 
+The source weights weapon DPS and speed according to the weapon slot; speed is
+measured relative to 2.0 seconds. A generic one-handed bag item is currently
+scored and compared as a main-hand weapon only, and is labelled accordingly.
+English tooltip text supplies weapon DPS and speed; when a required value
+cannot be read, the score is unavailable.
+
 This is **not a combat simulation**. All results are explicitly partial: item
-procs and on-use effects, set bonuses, weapon damage, gem/socket changes,
+procs and on-use effects, set bonuses, weapon effects, gem/socket changes,
 enchantments, combat interactions, caps, usability restrictions and unsupported
 stats or tooltip formats may be omitted. An apparently positive or zero result
 does not guarantee an upgrade. English classic-style spell-damage and
-spell-percentage Equip lines are recognized on a best-effort basis in addition
+spell-percentage Equip lines and armor are recognized on a best-effort basis in addition
 to the client item-stat API; other locales and text formats can miss stats.
-Percentage values are preferred over rating values when both appear for the
+Percentage values are preferred over point values when both appear for the
 same stat. Item data can be unavailable until cached; hover again.
 
 The tooltip hook and item APIs are used by existing Forever addons, but this

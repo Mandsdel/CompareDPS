@@ -34,6 +34,13 @@ local items = {
     ["item:9"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, fire = 10 },
     ["item:10"] = { loc = "INVTYPE_CHEST", int = 10, spell = 5 },
     ["item:11"] = { loc = "INVTYPE_WAIST", int = 5, spell = 10 },
+    ["item:12"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, str = 10, agi = 5, ap = 20, armor = 100 },
+    ["item:13"] = { loc = "INVTYPE_HEAD", int = 4, spell = 0, heal = 20, mp5 = 3 },
+    ["item:14"] = { loc = "INVTYPE_2HWEAPON", int = 0, spell = 0, dps = 10, speed = 3 },
+    ["item:15"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, defenseRating = 5 },
+    ["item:16"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, crit = 1 },
+    ["item:17"] = { loc = "INVTYPE_WEAPON", int = 0, spell = 0, dps = 10, speed = 3 },
+    ["item:18"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, splitHeal = true },
 }
 C_Item = {}
 local equipped = { [5] = "item:10", [11] = "item:2", [12] = "item:1", [16] = "item:4", [17] = "item:5" }
@@ -46,6 +53,11 @@ function C_Item.GetItemStats(link)
         ITEM_MOD_INTELLECT_SHORT = item.int,
         ITEM_MOD_MANA_REGENERATION_SHORT = item.mp5,
         ITEM_MOD_HIT_SPELL_RATING_SHORT = item.rating,
+        ITEM_MOD_STRENGTH_SHORT = item.str,
+        ITEM_MOD_AGILITY_SHORT = item.agi,
+        ITEM_MOD_ATTACK_POWER_SHORT = item.ap,
+        ITEM_MOD_SPELL_HEALING_DONE_SHORT = item.heal,
+        ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = item.defenseRating,
     } or nil
 end
 C_TooltipInfo = {}
@@ -58,8 +70,16 @@ function C_TooltipInfo.GetHyperlink(link)
     if item.hit then
         lines[#lines + 1] = { leftText = "Equip: Improves your chance to hit with spells by " .. item.hit .. "%." }
     end
+    if item.crit then
+        lines[#lines + 1] = { leftText = "Equip: Improves your chance to get a critical hit by " .. item.crit .. "%." }
+    end
     if item.fire then
         lines[#lines + 1] = { leftText = "Equip: Increases damage done by Fire spells and effects by up to " .. item.fire .. "." }
+    end
+    if item.armor then lines[#lines + 1] = { leftText = item.armor .. " Armor" } end
+    if item.dps then lines[#lines + 1] = { leftText = "(" .. item.dps .. " damage per second)", rightText = "Speed " .. item.speed } end
+    if item.splitHeal then
+        lines[#lines + 1] = { leftText = "Equip: Increases healing done by spells by up to 20 and damage done by spells by up to 10." }
     end
     return { lines = lines }
 end
@@ -111,7 +131,7 @@ assert(GameTooltip.colors[3][1] == 0.25 and GameTooltip.colors[3][2] == 1)
 equipped[16] = "item:3"
 assert(tooltip("item:5"):find("(requires a one-hand weapon)", 1, true))
 equipped[11] = "item:7"
-assert(tooltip("item:1"):find("equipped item missing weights: hitrating", 1, true))
+assert(tooltip("item:1"):find("slot 1: |cff40ff40+12.00|r", 1, true))
 equipped[11] = "item:2"
 GameTooltip.info = { getterName = "GetInventoryItem" }
 local worn = tooltip("item:1")
@@ -139,7 +159,10 @@ for _, case in ipairs({
     assert(result:find(string.format("Ring: %.2f points", case[3]), 1, true), result)
     local mana = tooltip("item:6")
     assert(mana:find(string.format("Ring: %.2f points", case[4]), 1, true), mana)
-    assert(tooltip("item:7"):find("missing weights: hitrating", 1, true))
+    local rating = tooltip("item:7")
+    assert(rating:find("Ring: " .. (case[1] == "demonology" and "6.00" or "6.50") .. " points", 1, true), rating)
+    local crit = tooltip("item:16")
+    assert(crit:find(string.format("Ring: %.2f points", namespace.profiles.WARLOCK[case[1]].weights.crit), 1, true), crit)
     local hit = tooltip("item:8")
     assert(hit:find("Ring: " .. (case[1] == "demonology" and "12.00" or "13.00") .. " points", 1, true), hit)
 end
@@ -154,4 +177,47 @@ playerClass = "WARLOCK"
 CompareDPSDB = { weights = { int = 0.2, spellpower = 0.5 } }
 frame.handler(frame, "ADDON_LOADED", "CompareDPS")
 assert(tooltip("item:1"):find("Choose a spec", 1, true))
+local expected = {
+    HUNTER = { "beastmastery", "marksmanship", "survival" },
+    MAGE = { "arcane", "fire", "frost" },
+    ROGUE = { "assassination", "combat", "subtlety" },
+    WARRIOR = { "arms", "fury", "protection" },
+    SHAMAN = { "elemental", "enhancement", "restoration" },
+    PALADIN = { "holy", "protection", "retribution" },
+    PRIEST = { "discipline", "holy", "shadow" },
+    DRUID = { "balance", "feral", "feraltank", "restoration" },
+    WARLOCK = { "affliction", "demonology", "destruction" },
+}
+for class, names in pairs(expected) do
+    playerClass = class
+    for _, name in ipairs(names) do
+        assert(namespace.selectProfile(name), class .. " " .. name)
+        assert(tooltip("item:1"):find(namespace.profiles[class][name].label, 1, true))
+    end
+end
+playerClass = "WARRIOR"
+assert(namespace.selectProfile("arms"))
+local physical = tooltip("item:12")
+assert(physical:find("Head: 23.40 points", 1, true), physical)
+local physicalWeapon = tooltip("item:14")
+assert(physicalWeapon:find("Two-hand: 73.00 points", 1, true), physicalWeapon)
+assert(tooltip("item:17"):find("Main hand: 30.00 points", 1, true))
+GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { "player", 17 } }
+assert(tooltip("item:17"):find("Off hand: 12.00 points", 1, true))
+GameTooltip.info = nil
+assert(tooltip("item:3"):find("weapon DPS, weapon speed", 1, true))
+assert(namespace.selectProfile("protection"))
+assert(tooltip("item:15"):find("defenserating", 1, true))
+playerClass = "PRIEST"
+assert(namespace.selectProfile("holy"))
+local healer = tooltip("item:13")
+assert(healer:find("Head: 31.00 points", 1, true), healer)
+assert(tooltip("item:18"):find("Head: 30.00 points", 1, true))
+playerClass = "DRUID"
+assert(namespace.selectProfile("feral"))
+local feral = tooltip("item:12")
+assert(feral:find("Head: 25.50 points", 1, true), feral)
+assert(namespace.selectProfile("feraltank"))
+local bear = tooltip("item:12")
+assert(bear:find("Head: 19.45 points", 1, true), bear)
 print("CompareDPS checks passed")

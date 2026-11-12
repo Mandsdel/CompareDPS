@@ -31,15 +31,8 @@ GameTooltip = { SetOwner = function() end, SetText = function() end,
     AddLine = function() end, Show = function() end, Hide = function() end }
 CompareDPSDB = {}
 local class = "WARLOCK"
-local addon = {
-    profiles = {
-        WARLOCK = {
-            affliction = { label = "Affliction" },
-            demonology = { label = "Demonology" },
-            destruction = { label = "Destruction" },
-        },
-    },
-}
+local addon = {}
+assert(loadfile("Profiles.lua"))("CompareDPS", addon)
 function addon.classProfiles() return addon.profiles[class] end
 function addon.selectProfile(key)
     assert(addon.classProfiles()[key])
@@ -79,9 +72,21 @@ assert(dropdown.text == "Destruction  v")
 addon.toggleOptions()
 addon.toggleOptions()
 assert(dropdown.text == "Destruction  v")
-class = "MAGE"
+class = "DRUID"
+addon.refreshOptions()
+dropdown.scripts.OnClick()
+labels = {}
+for _, frame in ipairs(frames) do
+    if frame.template == "UIPanelButtonTemplate" and frame ~= dropdown and frame.shown then
+        labels[frame.text] = frame
+    end
+end
+assert(labels["Feral (DPS)"] and labels["Feral (Tanking)"] and labels.Balance and labels["Restoration (Healing)"])
+labels["Feral (Tanking)"].scripts.OnClick()
+assert(CompareDPSDB.profile == "feraltank" and dropdown.text == "Feral (Tanking)  v")
+class = "UNSUPPORTED"
 addon.refreshOptions()
 dropdown.scripts.OnClick()
 assert(dropdown.text == "No supported specializations")
-assert(CompareDPSDB.profile == "destruction")
+assert(CompareDPSDB.profile == "feraltank")
 print("CompareDPS options checks passed")
