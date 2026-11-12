@@ -63,8 +63,8 @@ For rings and trinkets, each slot's difference is colored independently.
 The approximate weights come from [ForeverUpgrade's Warlock scales](https://github.com/DemiAutomatic/ForeverUpgrade/blob/main/Scales.lua).
 The same source provides the scales for all other classes. They are general
 spec-level starting points, not verified meta builds, character-specific
-simulations, or exact DPS. An absent
-stat weight is not assumed to be zero: if it changes, the addon reports it.
+simulations, or exact DPS. Stats without a weight in the selected profile
+contribute zero to the score.
 
 | Stat | Affliction | Demonology | Destruction |
 |---|---:|---:|---:|
@@ -84,10 +84,7 @@ fixed hit weights do not account for the hit cap. When the client returns
 Forever points instead of percentages, the source's approximate conversions
 are used: 10 hit, 14 crit, 12 dodge or 15 parry points per 1%. Its source
 notes that the character-sheet formula is unpublished. Haste, defense and
-block ratings are not converted; an item with these reports a missing weight.
-When no explicit armor weight exists, the source's 0.005 points per armor
-fallback is used. Health and mana use the source's stamina/10 and intellect/15
-fallbacks when no explicit weight exists.
+block ratings are not converted and have no weights, so contribute zero.
 
 ## How it works and limitations
 
@@ -125,5 +122,5 @@ lowercase profile name. Add a label and weights using the stat keys in
 `Core.lua`. `hit`, `crit` and `haste` are per percentage point; `hitrating`,
 `critrating` and `hasterating` are per rating point; `mp5` is per mana
 regenerated per 5 seconds; other weights are per stat point.
-Do not silently treat unspecified weights as zero; document each source and
-its units. Presets are manually selected with `/comparedps spec <name>`.
+Unspecified weights count as zero. Document each source and its units.
+Presets are manually selected with `/comparedps spec <name>`.

@@ -280,23 +280,11 @@ local function weaponKeys(location, slot)
 end
 
 local function scoreItem(stats, weights, location, slot)
-    local score, missing = 0, {}
+    local score, unavailable = 0, {}
     for _, key in ipairs(statOrder) do
         local value = stats[key]
         if value and value ~= 0 then
-            local weight = weights[key]
-            if key == "armor" and weight == nil then
-                weight = 0.005
-            elseif key == "health" and weight == nil and weights.stamina then
-                weight = weights.stamina / 10
-            elseif key == "mana" and weight == nil and weights.int then
-                weight = weights.int / 15
-            end
-            if weight == nil then
-                missing[#missing + 1] = key
-            else
-                score = score + value * weight
-            end
+            score = score + value * (weights[key] or 0)
         end
     end
     local dpsKey, speedKey = weaponKeys(location, slot)
@@ -304,18 +292,18 @@ local function scoreItem(stats, weights, location, slot)
         if stats.weaponDps then
             score = score + stats.weaponDps * weights[dpsKey]
         else
-            missing[#missing + 1] = "weapon DPS"
+            unavailable[#unavailable + 1] = "weapon DPS"
         end
     end
     if speedKey and weights[speedKey] then
         if stats.weaponSpeed then
             score = score + (stats.weaponSpeed - 2) * weights[speedKey]
         else
-            missing[#missing + 1] = "weapon speed"
+            unavailable[#unavailable + 1] = "weapon speed"
         end
     end
-    if #missing > 0 then
-        return nil, table.concat(missing, ", ")
+    if #unavailable > 0 then
+        return nil, table.concat(unavailable, ", ") .. " unavailable"
     end
     return score
 end
@@ -341,7 +329,7 @@ local function itemComparison(tooltip, location, candidateScore, weights)
             if not stats then return "equipped stats unavailable" end
             local missing
             oldScore, missing = scoreItem(stats, weights, itemLocation(equipped), slot)
-            if missing then return "equipped item missing weights: " .. missing end
+            if missing then return "equipped item " .. missing end
         end
 
         if slot == 17 then
@@ -359,7 +347,7 @@ local function itemComparison(tooltip, location, candidateScore, weights)
                 local stats = readStats(offhand)
                 if not stats then return "off-hand stats unavailable" end
                 local offScore, missing = scoreItem(stats, weights, itemLocation(offhand), 17)
-                if missing then return "off hand missing weights: " .. missing end
+                if missing then return "off hand " .. missing end
                 oldScore = oldScore + offScore
             end
         end
@@ -418,7 +406,7 @@ local function compare(tooltip, data)
     end
     local candidateScore, candidateMissing = scoreItem(candidate, weights, location, slot)
     if candidateMissing then
-        tooltip:AddLine(slotName .. ": missing weights: " .. candidateMissing, 1, 0.7, 0.2)
+        tooltip:AddLine(slotName .. ": " .. candidateMissing, 1, 0.7, 0.2)
     else
         local comparison, color = itemComparison(tooltip, location, candidateScore, weights)
         local suffix = comparison and (" (" .. comparison .. ")") or ""
@@ -448,7 +436,7 @@ local function command(input)
         message(label .. " weights (points per unit):")
         for _, name in ipairs(statOrder) do
             local weight = weights[name]
-            message(name .. ": " .. (weight == nil and "not set" or tostring(weight)))
+            message(name .. ": " .. tostring(weight or 0))
         end
     else
         message("/comparedps spec <name> | list")

@@ -184,7 +184,13 @@ for _, case in ipairs({
     assert(hit:find("Ring: " .. (case[1] == "demonology" and "12.00" or "13.00") .. " points", 1, true), hit)
 end
 SlashCmdList.COMPAREDPS("spec affliction")
-assert(tooltip("item:9"):find("missing weights: fire", 1, true))
+assert(tooltip("item:9"):find("Ring: 0.00 points", 1, true))
+assert(tooltip("item:12"):find("Head: 0.00 points", 1, true))
+GameTooltip.info = { getterName = "GetBagItem" }
+equipped[11] = "item:9"
+assert(tooltip("item:1"):find("slot 1: |cff40ff40+18.00|r", 1, true))
+equipped[11] = "item:2"
+GameTooltip.info = nil
 playerClass = "MAGE"
 assert(tooltip("item:1"):find("Choose a spec", 1, true))
 assert(not namespace.selectProfile("affliction"))
@@ -224,7 +230,7 @@ assert(tooltip("item:17"):find("Off hand: 12.00 points", 1, true))
 GameTooltip.info = nil
 assert(tooltip("item:3"):find("weapon DPS, weapon speed", 1, true))
 assert(namespace.selectProfile("protection"))
-assert(tooltip("item:15"):find("defenserating", 1, true))
+assert(tooltip("item:15"):find("Head: 0.00 points", 1, true))
 playerClass = "PRIEST"
 assert(namespace.selectProfile("holy"))
 local healer = tooltip("item:13")
@@ -233,7 +239,7 @@ assert(tooltip("item:18"):find("Head: 30.00 points", 1, true))
 playerClass = "DRUID"
 assert(namespace.selectProfile("feral"))
 local feral = tooltip("item:12")
-assert(feral:find("Head: 25.50 points", 1, true), feral)
+assert(feral:find("Head: 25.00 points", 1, true), feral)
 assert(namespace.selectProfile("feraltank"))
 local bear = tooltip("item:12")
 assert(bear:find("Head: 19.45 points", 1, true), bear)
