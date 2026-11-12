@@ -56,6 +56,8 @@ score difference from the equipped item. Positive means a higher score,
 negative a lower score. Rings and trinkets show differences for both equipped
 slots; an empty slot has a score of zero. Equipped-item tooltips do not show
 a difference. Other tooltip sources display the item score without a difference.
+Gains are green, losses are red, and equal scores and equipped items are white.
+For rings and trinkets, each slot's difference is colored independently.
 
 The approximate weights come from [ForeverUpgrade's Warlock scales](https://github.com/DemiAutomatic/ForeverUpgrade/blob/main/Scales.lua).
 They are general spec-level starting points, not verified meta builds,

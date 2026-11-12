@@ -250,10 +250,16 @@ local function bagComparison(tooltip, location, candidateScore, weights)
         end
 
         local delta = candidateScore - oldScore
+        local formatted = string.format("%+.2f", delta)
+        local color
+        if formatted ~= "+0.00" and formatted ~= "-0.00" then
+            color = delta > 0 and "ff40ff40" or "ffff4040"
+        end
         if #slots == 2 then
-            results[#results + 1] = string.format("slot %d: %+.2f", #results + 1, delta)
+            local value = color and ("|c" .. color .. formatted .. "|r") or formatted
+            results[#results + 1] = string.format("slot %d: %s", #results + 1, value)
         else
-            results[#results + 1] = string.format("%+.2f", delta)
+            return formatted, color
         end
     end
     return table.concat(results, ", ")
@@ -289,9 +295,12 @@ local function compare(tooltip, data)
     if candidateMissing then
         tooltip:AddLine(slotName .. ": missing weights: " .. candidateMissing, 1, 0.7, 0.2)
     else
-        local comparison = bagComparison(tooltip, location, candidateScore, weights)
+        local comparison, color = bagComparison(tooltip, location, candidateScore, weights)
         local suffix = comparison and (" (" .. comparison .. ")") or ""
-        tooltip:AddLine(string.format("%s: %.2f points%s", slotName, candidateScore, suffix), 1, 1, 1, true)
+        local r, g, b = 1, 1, 1
+        if color == "ff40ff40" then r, g, b = 0.25, 1, 0.25 end
+        if color == "ffff4040" then r, g, b = 1, 0.25, 0.25 end
+        tooltip:AddLine(string.format("%s: %.2f points%s", slotName, candidateScore, suffix), r, g, b, true)
     end
 end
 

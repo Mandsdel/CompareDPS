@@ -9,7 +9,11 @@ ShoppingTooltip1 = { lines = {} }
 ShoppingTooltip2 = { lines = {} }
 local playerClass = "WARLOCK"
 function UnitClass() return "Warlock", playerClass end
-function GameTooltip:AddLine(text) self.lines[#self.lines + 1] = text end
+function GameTooltip:AddLine(text, r, g, b)
+    self.lines[#self.lines + 1] = text
+    self.colors = self.colors or {}
+    self.colors[#self.lines] = { r, g, b }
+end
 function GameTooltip:GetProcessingTooltipInfo() return self.info end
 ShoppingTooltip1.AddLine = GameTooltip.AddLine
 ShoppingTooltip2.AddLine = GameTooltip.AddLine
@@ -66,6 +70,7 @@ frame.handler(frame, "ADDON_LOADED", "CompareDPS")
 
 local function tooltip(link)
     GameTooltip.lines = {}
+    GameTooltip.colors = {}
     TooltipDataProcessor.callback(GameTooltip, { hyperlink = link })
     return table.concat(GameTooltip.lines, "\n")
 end
@@ -84,13 +89,21 @@ assert(tooltip("item:10"):find("Chest: 9.00 points", 1, true))
 assert(tooltip("item:11"):find("Waist: 12.00 points", 1, true))
 GameTooltip.info = { getterName = "GetBagItem" }
 local baggedRing = tooltip("item:1")
-assert(baggedRing:find("Ring: 18.00 points (slot 1: +9.00, slot 2: +0.00)", 1, true), baggedRing)
+assert(baggedRing:find("Ring: 18.00 points (slot 1: |cff40ff40+9.00|r, slot 2: +0.00)", 1, true), baggedRing)
 equipped[12] = nil
-assert(tooltip("item:1"):find("(slot 1: +9.00, slot 2: +18.00)", 1, true))
+assert(tooltip("item:1"):find("(slot 1: |cff40ff40+9.00|r, slot 2: |cff40ff40+18.00|r)", 1, true))
+equipped[11] = "item:1"
+equipped[12] = "item:2"
+local mixed = tooltip("item:2")
+assert(mixed:find("(slot 1: |cffff4040-9.00|r, slot 2: +0.00)", 1, true), mixed)
+equipped[11] = "item:2"
 assert(tooltip("item:10"):find("Chest: 9.00 points (+0.00)", 1, true))
+assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 1 and GameTooltip.colors[3][3] == 1)
 equipped[5] = "item:11"
 assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
+assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
 assert(tooltip("item:3"):find("Two-hand: 32.00 points (+16.00)", 1, true))
+assert(GameTooltip.colors[3][1] == 0.25 and GameTooltip.colors[3][2] == 1)
 equipped[16] = "item:3"
 assert(tooltip("item:5"):find("(requires a one-hand weapon)", 1, true))
 equipped[11] = "item:7"
@@ -99,6 +112,7 @@ equipped[11] = "item:2"
 GameTooltip.info = { getterName = "GetInventoryItem" }
 local worn = tooltip("item:1")
 assert(worn:find("Ring: 18.00 points", 1, true) and not worn:find("(slot", 1, true), worn)
+assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 1 and GameTooltip.colors[3][3] == 1)
 GameTooltip.info = nil
 ShoppingTooltip1.lines = {}
 TooltipDataProcessor.callback(ShoppingTooltip1, { guid = "equipped-guid" })
