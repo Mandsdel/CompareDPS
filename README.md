@@ -1,51 +1,70 @@
 # CompareDPS
 
-An experimental **WoW Forever** addon that adds a weighted DPS difference to
-item tooltips. It is intended initially for a Demonology Warlock, but does not
-detect talents or provide built-in weights. Each character has its own weights.
+An experimental **WoW Forever** addon that scores items using stat weights and
+compares them with equipped gear. Choose one of three Warlock presets; each
+character has its own selection.
 The Forever client has not yet been tested with this addon.
 
 ## Install
 
-Place the `CompareDPS` folder containing `CompareDPS.toc` and `Core.lua` in
-your Forever `Interface\AddOns` folder, or use the shared
+Place the `CompareDPS` folder containing `CompareDPS.toc`, `Profiles.lua`,
+`Core.lua`, and `Options.lua` in your Forever `Interface\AddOns` folder, or use the shared
 `wow-forever-addon-development` desktop installer. Restart the game or reload
 the UI, then enable CompareDPS.
 
-## Configure
+## Warlock presets
 
-Enter **DPS gained per unit of each stat** for your build:
+Your class is detected automatically. Click the **CompareDPS minimap icon**
+to open its options, then choose your spec from the **Specialization** dropdown.
+The selection is saved per character and takes effect on the next tooltip.
+The addon does not inspect talents or automatically detect your specialization.
+If your class has no profiles, the dropdown reports that none are available.
+
+The following commands are also available:
 
 ```text
-/comparedps set spellpower 0.5
-/comparedps set int 0.1
+/comparedps spec affliction
+/comparedps spec demonology
+/comparedps spec destruction
 /comparedps list
-/comparedps clear int
 ```
 
-The numbers above are **examples only**, not recommended weights. Enter `0`
-explicitly for a stat you want to ignore. If a stat changes and has no weight,
-the addon reports the missing weight rather than inventing a DPS result.
+The tooltip shows the item's score, the equipped item's score, and the
+difference. Higher means more weighted value **among the stats counted**.
+These are relative points, not actual DPS. The first time you use the addon,
+select a spec; no preset is automatically chosen.
 
-Supported names are `spellpower`, `shadow`, `fire`, `int`, `spirit`, `stamina`,
-`hit`, `crit`, `haste`, `hitrating`, `critrating`, and `hasterating`. The first
-three percentage stats use DPS **per 1 percentage point**, while the rating
-stats use DPS **per rating point**. The others use DPS per point. Weights can
-be negative and are saved per character.
+The approximate weights come from [ForeverUpgrade's Warlock scales](https://github.com/DemiAutomatic/ForeverUpgrade/blob/main/Scales.lua).
+They are general spec-level starting points, not verified meta builds,
+character-specific simulations, or exact DPS. The source also has a ranged
+weapon DPS weight, which CompareDPS does **not** currently score. An absent
+stat weight is not assumed to be zero: if it changes, the addon reports it.
 
-If a source reports stat weights relative to spell power, rather than actual
-DPS per unit, multiply each relative value by the DPS gained from one spell
-power. For example, relative intellect weight 0.2 times 0.5 DPS per spell
-power gives 0.1 DPS per intellect. Use compatible units, and redo weights when
-your gear, talents, target or fight assumptions change.
+| Stat | Affliction | Demonology | Destruction |
+|---|---:|---:|---:|
+| Spell power | 1 | 1 | 1 |
+| Shadow damage | 0.95 | 0.8 | 0.65 |
+| Fire damage | not specified | 0.35 | 0.9 |
+| Intellect | 0.4 | 0.4 | 0.35 |
+| Stamina | 0.35 | 0.5 | 0.2 |
+| Spirit | 0.25 | 0.15 | 0.1 |
+| Spell hit per 1% | 13 | 12 | 13 |
+| Spell crit per 1% | 6 | 8 | 11 |
+| Mana per 5 seconds | 1.3 | 1 | 0.8 |
+
+These are relative gear-value weights: stamina and mana regeneration may
+include survivability or resource value, not just damage. In particular,
+fixed hit weights do not account for the hit cap. The preset does not provide
+rating-point weights; if the client returns rating rather than percentages,
+the addon reports the missing weight instead of guessing a conversion.
 
 ## How it works and limitations
 
-For each applicable equipped slot, the addon computes the item's supported stat
-changes multiplied by the supplied weights. Rings and trinkets are compared
-against both slots. A two-handed item is compared against both the main hand
-and off hand together. An off-hand item cannot be compared against a currently
-equipped two-hander without choosing a replacement main hand.
+Scores are the sum of supported stat amounts multiplied by their weights.
+Rings and trinkets are compared against both slots. A two-handed item is
+compared against the combined main hand and off hand. An off-hand item cannot
+be compared against a currently equipped two-hander without choosing a
+replacement main hand.
 
 This is **not a combat simulation**. All results are explicitly partial: item
 procs and on-use effects, set bonuses, weapon damage, gem/socket changes,
@@ -57,21 +76,17 @@ to the client item-stat API; other locales and text formats can miss stats.
 Percentage values are preferred over rating values when both appear for the
 same stat. Item data can be unavailable until cached; hover again.
 
-No estimation is shown if required APIs or item data are unavailable. API
-availability, tooltip formatting, the item-stat units and comparison behavior
-must be checked in the Forever client.
+The tooltip hook and item APIs are used by existing Forever addons, but this
+implementation needs real-client testing. Start by comparing simple items
+with known stats, then test rings, enchanted items and weapons. Share tooltip
+output and errors before relying on the result.
 
-## Investigation and next steps
+## Adding presets
 
-- Forever uses interface `16001` and has its own rebalanced classes; weights
-  from other WoW versions should not be assumed valid.
-- [Xn's Warlock Sim](https://github.com/XNWLK/WarlockSIMAddon) describes an
-  in-game Forever Warlock simulator and reports character-specific stat
-  weights. Its website [documents the mechanics and assumptions](https://github.com/XNWLK/WarlockSIM/blob/main/MECHANICS.md).
-  It is an optional source of estimates, not a dependency, and its results
-  can differ from the game. CompareDPS does not reuse its code.
-- The tooltip hook and item-stat APIs are used by existing Forever addons,
-  but this implementation needs real-client testing. Start by configuring
-  known weights and comparing a pair of simple items with known stats; then
-  test rings, enchanted items and weapons. Share tooltip output and errors
-  before relying on the result.
+`Profiles.lua` contains profiles indexed by the player's class token and a
+lowercase profile name. Add a label and weights using the stat keys in
+`Core.lua`. `hit`, `crit` and `haste` are per percentage point; `hitrating`,
+`critrating` and `hasterating` are per rating point; `mp5` is per mana
+regenerated per 5 seconds; other weights are per stat point.
+Do not silently treat unspecified weights as zero; document each source and
+its units. Presets are manually selected with `/comparedps spec <name>`.

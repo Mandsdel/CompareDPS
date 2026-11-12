@@ -1,3 +1,4 @@
+local _, namespace = ...
 local addon = CreateFrame("Frame")
 
 local slots = {
@@ -30,23 +31,56 @@ local statKeys = {
     ITEM_MOD_HIT_SPELL_RATING_SHORT = "hitrating",
     ITEM_MOD_CRIT_SPELL_RATING_SHORT = "critrating",
     ITEM_MOD_HASTE_SPELL_RATING_SHORT = "hasterating",
+    ITEM_MOD_MANA_REGENERATION_SHORT = "mp5",
+    ITEM_MOD_POWER_REGEN0_SHORT = "mp5",
 }
 
 local statOrder = {
     "spellpower", "shadow", "fire", "int", "spirit", "stamina",
-    "hit", "crit", "haste", "hitrating", "critrating", "hasterating",
+    "hit", "crit", "haste", "hitrating", "critrating", "hasterating", "mp5",
 }
-local validStat = {}
-for _, key in ipairs(statOrder) do
-    validStat[key] = true
-end
-
 local function secret(value)
     return type(issecretvalue) == "function" and issecretvalue(value)
 end
 
 local function message(text)
     print("|cff80cfffCompareDPS:|r " .. text)
+end
+
+local function classProfiles()
+    if type(UnitClass) ~= "function" then return nil end
+    local _, class = UnitClass("player")
+    if secret(class) or type(class) ~= "string" then return nil end
+    return namespace.profiles[class]
+end
+
+local function activeWeights()
+    local profiles = classProfiles()
+    local profile = profiles and profiles[CompareDPSDB.profile]
+    if profile then
+        return profile.weights, profile.label
+    end
+end
+
+local function availableProfiles()
+    local profiles = classProfiles()
+    local names = {}
+    if profiles then
+        for key in pairs(profiles) do names[#names + 1] = key end
+        table.sort(names)
+    end
+    return #names > 0 and table.concat(names, ", ") or "none for your class"
+end
+
+namespace.classProfiles = classProfiles
+namespace.activeWeights = activeWeights
+
+function namespace.selectProfile(key)
+    local profiles = classProfiles()
+    if not profiles or not profiles[key] then return false end
+    CompareDPSDB.profile = key
+    if namespace.refreshOptions then namespace.refreshOptions() end
+    return true
 end
 
 local function getLink(tooltip, data)
@@ -144,7 +178,7 @@ local function readStats(link)
     return stats
 end
 
-local function difference(candidate, oldItems)
+local function difference(candidate, oldItems, weights)
     local delta = {}
     for key, value in pairs(candidate) do delta[key] = value end
     for _, item in ipairs(oldItems) do
@@ -154,7 +188,7 @@ local function difference(candidate, oldItems)
     for _, key in ipairs(statOrder) do
         local value = delta[key]
         if value and value ~= 0 then
-            local weight = CompareDPSDB.weights[key]
+            local weight = weights[key]
             if weight == nil then
                 missing[#missing + 1] = key
             else
@@ -169,22 +203,30 @@ local function difference(candidate, oldItems)
 end
 
 local function compare(tooltip, data)
-    if not CompareDPSDB or type(CompareDPSDB.weights) ~= "table" then return end
+    if not CompareDPSDB then return end
     local link = getLink(tooltip, data)
     if not link then return end
     local location = itemLocation(link)
     local targets = location and slots[location]
     if not targets then return end
 
-    local candidate = readStats(link)
+    local weights, label = activeWeights()
     tooltip:AddLine("CompareDPS (partial estimate)", 0.5, 0.8, 1)
-    if not next(CompareDPSDB.weights) then
-        tooltip:AddLine("No weights configured. Type /comparedps.", 1, 0.7, 0.2)
+    if not weights or not next(weights) then
+        tooltip:AddLine("Choose a spec using the minimap button.", 1, 0.7, 0.2)
         return
     end
+    tooltip:AddLine(label .. " - relative score", 0.7, 0.8, 1)
+    local candidate = readStats(link)
     if not candidate then
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
         return
+    end
+    local candidateScore, candidateMissing = difference(candidate, {}, weights)
+    if candidateMissing then
+        tooltip:AddLine("Item score unavailable; missing weights: " .. candidateMissing, 1, 0.7, 0.2)
+    else
+        tooltip:AddLine(string.format("Item: %.2f points", candidateScore), 1, 1, 1)
     end
 
     for _, slot in ipairs(targets) do
@@ -220,56 +262,66 @@ local function compare(tooltip, data)
             end
         end
 
-        local score, missing
-        if not problem then score, missing = difference(candidate, oldItems) end
+        local score, missing, oldScore, oldMissing
+        if not problem then
+            score, missing = difference(candidate, oldItems, weights)
+            oldScore, oldMissing = difference({}, oldItems, weights)
+        end
         if problem then
             tooltip:AddLine(slotNames[slot] .. ": " .. problem, 1, 0.7, 0.2)
         elseif missing then
-            tooltip:AddLine(slotNames[slot] .. ": set weights for " .. missing, 1, 0.7, 0.2)
+            tooltip:AddLine(slotNames[slot] .. ": missing weights: " .. missing, 1, 0.7, 0.2)
         else
             local r, g = 1, 0.82
             if score > 0 then r, g = 0.3, 1 elseif score < 0 then r, g = 1, 0.3 end
-            tooltip:AddLine(string.format("%s: %+.2f DPS", slotNames[slot], score), r, g, 0.3)
+            if oldMissing then
+                tooltip:AddLine(string.format("%s: %+.2f points (equipped score unavailable: %s)", slotNames[slot], score, oldMissing), r, g, 0.3, true)
+            else
+                tooltip:AddLine(string.format("%s: %.2f points (%+.2f)", slotNames[slot], -oldScore, score), r, g, 0.3)
+            end
         end
     end
     tooltip:AddLine("Only supported stats; effects and enchants may be missing.", 1, 0.7, 0.2, true)
-    tooltip:AddLine("Weights: /comparedps", 0.7, 0.7, 0.7)
+    tooltip:AddLine("Settings: minimap button", 0.7, 0.7, 0.7)
 end
 
 local function command(input)
-    local action, key, value = input:lower():match("^%s*(%S+)%s*(%S*)%s*(%S*)%s*$")
-    if action == "set" then
-        local number = tonumber(value)
-        if not validStat[key] or not number or number ~= number or number == math.huge or number == -math.huge then
-            message("Usage: /comparedps set <stat> <DPS per stat unit>")
+    local action, key = input:lower():match("^%s*(%S+)%s*(%S*)%s*$")
+    if action == "spec" then
+        local profiles = classProfiles()
+        if not profiles or not profiles[key] then
+            message("Unknown spec for your class. Available: " .. availableProfiles() .. ".")
             return
         end
-        CompareDPSDB.weights[key] = number
-        message(key .. " = " .. number .. " DPS per unit.")
-    elseif action == "clear" then
-        if not validStat[key] then
-            message("Usage: /comparedps clear <stat>")
-            return
-        end
-        CompareDPSDB.weights[key] = nil
-        message("Cleared " .. key .. ".")
+        namespace.selectProfile(key)
+        message("Using " .. profiles[key].label .. " relative score weights.")
     elseif action == "list" then
+        local weights, label = activeWeights()
+        if not weights then
+            message("No profile selected. Use /comparedps spec <name>.")
+            return
+        end
+        message(label .. " weights (points per unit):")
         for _, name in ipairs(statOrder) do
-            local weight = CompareDPSDB.weights[name]
+            local weight = weights[name]
             message(name .. ": " .. (weight == nil and "not set" or tostring(weight)))
         end
     else
-        message("/comparedps set <stat> <DPS per unit> | clear <stat> | list")
-        message("Stats: " .. table.concat(statOrder, ", "))
-        message("No default weights. See the README for units and limitations.")
+        message("/comparedps spec <name> | list")
+        message("Available specs: " .. availableProfiles())
+        message("Presets are relative scores, not DPS. See the README for limitations.")
     end
 end
 
 addon:RegisterEvent("ADDON_LOADED")
-addon:SetScript("OnEvent", function(_, _, name)
+addon:RegisterEvent("PLAYER_LOGIN")
+addon:SetScript("OnEvent", function(_, event, name)
+    if event == "PLAYER_LOGIN" then
+        if namespace.initializeOptions then namespace.initializeOptions() end
+        return
+    end
     if name ~= "CompareDPS" then return end
     if type(CompareDPSDB) ~= "table" then CompareDPSDB = {} end
-    if type(CompareDPSDB.weights) ~= "table" then CompareDPSDB.weights = {} end
     SLASH_COMPAREDPS1 = "/comparedps"
     SlashCmdList.COMPAREDPS = command
     if not C_Item or type(C_Item.GetItemInfoInstant) ~= "function"

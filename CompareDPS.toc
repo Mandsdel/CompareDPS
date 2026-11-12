@@ -1,7 +1,9 @@
 ## Interface: 16001
 ## Title: CompareDPS
-## Notes: Compares equipped gear using your own DPS stat weights.
-## Version: 0.1.0
+## Notes: Compares gear using relative stat weights.
+## Version: 0.2.0
 ## SavedVariablesPerCharacter: CompareDPSDB
 
+Profiles.lua
 Core.lua
+Options.lua
