@@ -7,10 +7,26 @@ The Forever client has not yet been tested with this addon.
 
 ## Install
 
-Place the `CompareDPS` folder containing `CompareDPS.toc`, `Profiles.lua`,
-`Core.lua`, and `Options.lua` in your Forever `Interface\AddOns` folder, or use the shared
-`wow-forever-addon-development` desktop installer. Restart the game or reload
-the UI, then enable CompareDPS.
+On the desktop, close WoW Forever, pull this repository, and run from the
+`CompareDPS` folder:
+
+```powershell
+git pull --ff-only origin main
+.\Install-CompareDPS.ps1
+```
+
+The installer copies the addon files to
+`D:\World of Warcraft\_forever_\Interface\AddOns\CompareDPS` by default.
+It overwrites those files in an existing installation without creating a
+backup. For a different AddOns directory, use:
+
+```powershell
+.\Install-CompareDPS.ps1 -AddOnsPath 'X:\World of Warcraft\_forever_\Interface\AddOns'
+```
+
+If PowerShell blocks scripts, use
+`powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-CompareDPS.ps1`.
+Start the game and enable CompareDPS at character selection.
 
 ## Warlock presets
 
