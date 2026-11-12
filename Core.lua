@@ -280,12 +280,12 @@ local function compare(tooltip, data)
     if not slotName then return end
 
     local weights, label = activeWeights()
-    tooltip:AddLine("CompareDPS (partial estimate)", 0.5, 0.8, 1)
+    tooltip:AddLine("CompareDPS", 0.8, 0.65, 0.25)
     if not weights or not next(weights) then
         tooltip:AddLine("Choose a spec using the minimap button.", 1, 0.7, 0.2)
         return
     end
-    tooltip:AddLine(label .. " - relative score", 0.7, 0.8, 1)
+    tooltip:AddLine(label, 0.7, 0.8, 1)
     local candidate = readStats(link)
     if not candidate then
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
