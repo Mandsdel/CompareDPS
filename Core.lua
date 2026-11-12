@@ -78,7 +78,7 @@ local statKeys = {
     ITEM_MOD_MANA_REGENERATION_SHORT = "mp5",
     ITEM_MOD_POWER_REGEN0_SHORT = "mp5",
     ITEM_MOD_HEALTH_REGENERATION_SHORT = "hp5",
-    ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = "defenserating",
+    ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = "defense",
     ITEM_MOD_DODGE_RATING_SHORT = "dodgerating",
     ITEM_MOD_PARRY_RATING_SHORT = "parryrating",
     ITEM_MOD_BLOCK_RATING_SHORT = "blockrating",
@@ -249,6 +249,12 @@ local function tooltipStats(link)
             end
             local armor = text:match("^(%d+)%s+armor$")
             if armor then values.armor = tonumber(armor) end
+            value = text:match("^%+?(%d+)%s+defense$")
+            if value then add(values, "defense", tonumber(value)) end
+            value = text:match("^%+?(%d+)%s+block value$")
+            if value then add(values, "blockValue", tonumber(value)) end
+            value = text:match("^%+?(%d+%.?%d*)%%%s+block$")
+            if value then add(values, "block", tonumber(value)) end
             if text:find("equip:", 1, true) then
                 local healing, damage = text:match("healing.-up to (%d+).-damage.-up to (%d+)")
                 if healing and damage then
@@ -293,7 +299,10 @@ local function tooltipStats(link)
                     if value then add(values, key, tonumber(value)) end
                 end
                 value = text:match("defense skill.-by (%d+)")
+                    or text:match("defense.-by (%d+)") or text:match("increased defense %+(%d+)")
                 if value then add(values, "defense", tonumber(value)) end
+                value = text:match("block value.-by (%d+)") or text:match("blocks? an additional (%d+)")
+                if value then add(values, "blockValue", tonumber(value)) end
                 value = text:match("restores (%d+) mana per 5 sec")
                 if value then add(values, "mp5", tonumber(value)) end
             end
@@ -379,6 +388,34 @@ local function scoreItem(stats, weights, location, slot)
     return score
 end
 
+local function weaponSlot(tooltip, data, link)
+    local info = type(tooltip.GetProcessingTooltipInfo) == "function" and tooltip:GetProcessingTooltipInfo()
+    if not secret(info) and type(info) == "table" and info.getterName == "GetInventoryItem"
+        and not secret(info.getterArgs) and type(info.getterArgs) == "table" then
+        local slot = info.getterArgs[2]
+        if not secret(slot) and (slot == 16 or slot == 17) then return slot end
+    end
+    local shopping = tooltip == ShoppingTooltip1 or tooltip == ShoppingTooltip2
+        or tooltip == ItemRefShoppingTooltip1 or tooltip == ItemRefShoppingTooltip2
+    if not shopping or type(GetInventoryItemLink) ~= "function" then return nil end
+    local guid = type(data) == "table" and data.guid
+    if not secret(guid) and type(guid) == "string" and ItemLocation
+        and type(ItemLocation.CreateFromEquipmentSlot) == "function"
+        and C_Item and type(C_Item.GetItemGUID) == "function" then
+        for _, slot in ipairs({ 16, 17 }) do
+            local equipped = GetInventoryItemLink("player", slot)
+            if not secret(equipped) and equipped then
+                local equippedGuid = C_Item.GetItemGUID(ItemLocation:CreateFromEquipmentSlot(slot))
+                if not secret(equippedGuid) and equippedGuid == guid then return slot end
+            end
+        end
+    end
+    local main, off = GetInventoryItemLink("player", 16), GetInventoryItemLink("player", 17)
+    if secret(main) or secret(off) then return nil end
+    if link == main and link ~= off then return 16 end
+    if link == off and link ~= main then return 17 end
+end
+
 local function itemComparison(tooltip, location, candidateScore, weights)
     if tooltip ~= ItemRefTooltip then
         if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
@@ -445,6 +482,14 @@ local function itemComparison(tooltip, location, candidateScore, weights)
     return table.concat(results, ", ")
 end
 
+local function handComparison(tooltip, candidate, weights, hand)
+    local score, unavailable = scoreItem(candidate, weights, "INVTYPE_WEAPON", hand)
+    if unavailable then return nil, unavailable end
+    local location = hand == 16 and "INVTYPE_WEAPONMAINHAND" or "INVTYPE_WEAPONOFFHAND"
+    local delta, color = itemComparison(tooltip, location, score, weights)
+    return score, delta, color
+end
+
 local function compare(tooltip, data)
     if not CompareDPSDB then return end
     local link = getLink(tooltip, data)
@@ -477,12 +522,23 @@ local function compare(tooltip, data)
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
         return
     end
-    local info = type(tooltip.GetProcessingTooltipInfo) == "function" and tooltip:GetProcessingTooltipInfo()
-    local slot
-    if not secret(info) and type(info) == "table" and info.getterName == "GetInventoryItem"
-        and type(info.getterArgs) == "table" then
-        local inventorySlot = info.getterArgs[2]
-        if not secret(inventorySlot) and type(inventorySlot) == "number" then slot = inventorySlot end
+    local slot = weaponSlot(tooltip, data, link)
+    local _, class = UnitClass("player")
+    if location == "INVTYPE_WEAPON" and not slot and not secret(class) and offhandWeaponClasses[class] then
+        for _, hand in ipairs({ 16, 17 }) do
+            local score, delta, color = handComparison(tooltip, candidate, weights, hand)
+            local name = hand == 16 and "Main hand" or "Off hand"
+            if not score then
+                tooltip:AddLine(name .. ": " .. delta, 1, 0.7, 0.2)
+            else
+                local suffix = delta and (" (" .. delta .. ")") or ""
+                local r, g, b = 1, 1, 1
+                if color == "ff40ff40" then r, g, b = 0.25, 1, 0.25 end
+                if color == "ffff4040" then r, g, b = 1, 0.25, 0.25 end
+                tooltip:AddLine(string.format("%s: %.2f points%s", name, score, suffix), r, g, b, true)
+            end
+        end
+        return
     end
     if location == "INVTYPE_WEAPON" then
         slotName = slot == 17 and "Off hand" or "Main hand"

@@ -60,10 +60,17 @@ local items = {
     ["item:27"] = { loc = "INVTYPE_WEAPONOFFHAND", int = 0, spell = 0, classID = 2, subclass = 7, dps = 10, speed = 3 },
     ["item:28"] = { loc = "INVTYPE_HOLDABLE", int = 0, spell = 0, classID = 4, subclass = 6 },
     ["item:29"] = { loc = "INVTYPE_CHEST", int = 10, spell = 0, classID = 4, subclass = 3 },
+    ["item:30"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, defenseRating = 5, blockValue = 10, blockPercent = 2 },
+    ["item:31"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, defenseText = 5, blockValueText = 10 },
+    ["item:32"] = { loc = "INVTYPE_WEAPON", int = 0, spell = 0, classID = 2, subclass = 7, dps = 5, speed = 2 },
+    ["item:33"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, blockText = 2 },
 }
 C_Item = {}
 local equipped = { [5] = "item:10", [11] = "item:2", [12] = "item:1", [16] = "item:4", [17] = "item:5" }
 function GetInventoryItemLink(_, slot) return equipped[slot] end
+ItemLocation = {}
+function ItemLocation:CreateFromEquipmentSlot(slot) return slot end
+function C_Item.GetItemGUID(slot) return "guid:" .. slot end
 function C_Item.GetItemInfoInstant(link)
     local item = items[link]
     if not item then return end
@@ -83,6 +90,7 @@ function C_Item.GetItemStats(link)
         ITEM_MOD_ATTACK_POWER_SHORT = item.ap,
         ITEM_MOD_SPELL_HEALING_DONE_SHORT = item.heal,
         ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = item.defenseRating,
+        ITEM_MOD_BLOCK_VALUE_SHORT = item.blockValue,
     } or nil
 end
 C_TooltipInfo = {}
@@ -106,6 +114,10 @@ function C_TooltipInfo.GetHyperlink(link)
     if item.splitHeal then
         lines[#lines + 1] = { leftText = "Equip: Increases healing done by spells by up to 20 and damage done by spells by up to 10." }
     end
+    if item.blockPercent then lines[#lines + 1] = { leftText = "Equip: Improves your chance to block by " .. item.blockPercent .. "%." } end
+    if item.blockText then lines[#lines + 1] = { leftText = "+" .. item.blockText .. "% Block" } end
+    if item.defenseText then lines[#lines + 1] = { leftText = "+" .. item.defenseText .. " Defense" } end
+    if item.blockValueText then lines[#lines + 1] = { leftText = "+" .. item.blockValueText .. " Block Value" } end
     if item.classes then lines[#lines + 1] = { leftText = "Classes: " .. item.classes } end
     if item.races then lines[#lines + 1] = { leftText = "Races: " .. item.races } end
     if item.requirements then
@@ -281,12 +293,32 @@ assert(physical:find("Head: 23.40 points", 1, true), physical)
 local physicalWeapon = tooltip("item:14")
 assert(physicalWeapon:find("Two-hand: 73.00 points", 1, true), physicalWeapon)
 assert(tooltip("item:17"):find("Main hand: 30.00 points", 1, true))
+equipped[16], equipped[17] = "item:32", "item:32"
+ShoppingTooltip1.lines = {}
+TooltipDataProcessor.callback(ShoppingTooltip1, { hyperlink = "item:32", guid = "guid:17" })
+assert(table.concat(ShoppingTooltip1.lines, "\n"):find("Off hand: 6.00 points", 1, true))
+GameTooltip.info = { getterName = "GetBagItem" }
+local bothHands = tooltip("item:17")
+assert(bothHands:find("Main hand: 30.00 points (+15.00)", 1, true), bothHands)
+assert(bothHands:find("Off hand: 12.00 points (+6.00)", 1, true), bothHands)
+equipped[16], equipped[17] = "item:14", nil
+local twoHand = tooltip("item:17")
+assert(twoHand:find("Main hand: 30.00 points (-43.00)", 1, true), twoHand)
+assert(twoHand:find("Off hand: 12.00 points (requires a one-hand weapon)", 1, true), twoHand)
+equipped[16], equipped[17] = "item:14", "item:17"
+ShoppingTooltip1.lines = {}
+TooltipDataProcessor.callback(ShoppingTooltip1, { hyperlink = "item:17" })
+assert(table.concat(ShoppingTooltip1.lines, "\n"):find("Off hand: 12.00 points", 1, true))
+equipped[16], equipped[17] = "item:3", "item:5"
 GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { "player", 17 } }
 assert(tooltip("item:17"):find("Off hand: 12.00 points", 1, true))
 GameTooltip.info = nil
 assert(tooltip("item:3"):find("weapon DPS, weapon speed", 1, true))
 assert(namespace.selectProfile("protection"))
-assert(tooltip("item:15"):find("Head: 0.00 points", 1, true))
+assert(tooltip("item:15"):find("Head: 6.50 points", 1, true))
+assert(tooltip("item:30"):find("Head: 20.50 points", 1, true))
+assert(tooltip("item:31"):find("Head: 10.50 points", 1, true))
+assert(tooltip("item:33"):find("Head: 10.00 points", 1, true))
 playerClass = "PRIEST"
 assert(namespace.selectProfile("holy"))
 local healer = tooltip("item:13")

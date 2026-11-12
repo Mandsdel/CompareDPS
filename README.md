@@ -89,8 +89,10 @@ include survivability or resource value, not just damage. In particular,
 fixed hit weights do not account for the hit cap. When the client returns
 Forever points instead of percentages, the source's approximate conversions
 are used: 10 hit, 14 crit, 12 dodge or 15 parry points per 1%. Its source
-notes that the character-sheet formula is unpublished. Haste, defense and
-block ratings are not converted and have no weights, so contribute zero.
+notes that the character-sheet formula is unpublished. Defense points use the
+source's one-point-per-defense convention. Block chance in percentage form
+and block value are weighted; block rating is not converted because the source
+does not document its conversion. Haste and block ratings contribute zero.
 
 ## How it works and limitations
 
@@ -101,8 +103,9 @@ cannot be compared when a two-handed weapon is equipped without choosing a
 replacement main-hand weapon.
 
 The source weights weapon DPS and speed according to the weapon slot; speed is
-measured relative to 2.0 seconds. A generic one-handed bag item is currently
-scored and compared as a main-hand weapon only, and is labelled accordingly.
+measured relative to 2.0 seconds. For classes that can dual wield, a generic
+one-handed item displays separate main-hand and off-hand scores and comparisons.
+Equipped weapon tooltips use the equipped hand when it can be identified.
 English tooltip text supplies weapon DPS and speed; when a required value
 cannot be read, the score is unavailable.
 
