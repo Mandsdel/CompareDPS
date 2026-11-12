@@ -23,6 +23,25 @@ local comparisonSlots = {
     INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 },
 }
 
+-- ForeverUpgrade's Forever class equipment categories.
+local weaponTypes = {
+    WARRIOR = { [0]=true,[1]=true,[2]=true,[3]=true,[4]=true,[5]=true,[6]=true,[7]=true,[8]=true,[10]=true,[13]=true,[15]=true,[16]=true,[18]=true },
+    PALADIN = { [4]=true,[5]=true,[6]=true,[7]=true,[8]=true },
+    HUNTER = { [0]=true,[1]=true,[2]=true,[3]=true,[6]=true,[7]=true,[8]=true,[10]=true,[13]=true,[15]=true,[16]=true,[18]=true },
+    ROGUE = { [2]=true,[3]=true,[4]=true,[7]=true,[13]=true,[15]=true,[16]=true,[18]=true },
+    PRIEST = { [4]=true,[10]=true,[15]=true,[19]=true },
+    SHAMAN = { [0]=true,[1]=true,[4]=true,[5]=true,[10]=true,[13]=true,[15]=true },
+    MAGE = { [7]=true,[10]=true,[15]=true,[19]=true },
+    WARLOCK = { [7]=true,[10]=true,[15]=true,[19]=true },
+    DRUID = { [4]=true,[5]=true,[6]=true,[10]=true,[13]=true,[15]=true },
+}
+local armorLimit = {
+    WARRIOR = 4, PALADIN = 4, HUNTER = 3, SHAMAN = 3,
+    ROGUE = 2, DRUID = 2, MAGE = 1, PRIEST = 1, WARLOCK = 1,
+}
+local shieldClasses = { WARRIOR = true, PALADIN = true, SHAMAN = true }
+local offhandWeaponClasses = { WARRIOR = true, ROGUE = true, HUNTER = true, SHAMAN = true }
+
 local statKeys = {
     ITEM_MOD_STRENGTH_SHORT = "str",
     ITEM_MOD_AGILITY_SHORT = "agi",
@@ -154,6 +173,49 @@ local function itemLocation(link)
         return nil
     end
     return location
+end
+
+local function matchesRestriction(data, format, playerName)
+    if secret(format) or type(format) ~= "string" or secret(playerName) or type(playerName) ~= "string" then return true end
+    local placeholder = format:find("%%s")
+    if not placeholder then return true end
+    local prefix = format:sub(1, placeholder - 1):lower()
+    if prefix == "" then return true end
+    for _, line in ipairs(data.lines) do
+        local text = type(line) == "table" and line.leftText
+        if not secret(text) and type(text) == "string" then
+            text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):lower()
+            if text:sub(1, #prefix) == prefix then
+                for name in text:sub(#prefix + 1):gmatch("[^,]+") do
+                    if name:match("^%s*(.-)%s*$") == playerName:lower() then return true end
+                end
+                return false
+            end
+        end
+    end
+    return true
+end
+
+local function canEquipForClass(link, location)
+    if type(UnitClass) ~= "function" then return nil end
+    local className, class = UnitClass("player")
+    if secret(class) or type(class) ~= "string" or not armorLimit[class] then return nil end
+    local _, _, _, _, _, itemClass, subclass = C_Item.GetItemInfoInstant(link)
+    if secret(itemClass) or secret(subclass) or type(itemClass) ~= "number"
+        or type(subclass) ~= "number" then return nil end
+    if itemClass == 2 then
+        if not weaponTypes[class][subclass] then return false end
+        if location == "INVTYPE_WEAPONOFFHAND" and not offhandWeaponClasses[class] then return false end
+    elseif itemClass == 4 then
+        if subclass >= 1 and subclass <= 4 and subclass > armorLimit[class] then return false end
+        if subclass == 6 and not shieldClasses[class] then return false end
+    end
+
+    local data = C_TooltipInfo.GetHyperlink(link)
+    if secret(data) or type(data) ~= "table" or secret(data.lines) or type(data.lines) ~= "table" then return nil end
+    if not matchesRestriction(data, ITEM_CLASSES_ALLOWED, className) then return false end
+    local race = type(UnitRace) == "function" and UnitRace("player")
+    return matchesRestriction(data, ITEM_RACES_ALLOWED, race)
 end
 
 local function add(stats, key, value)
@@ -395,9 +457,15 @@ local function compare(tooltip, data)
     local location = itemLocation(link)
     local slotName = location and slotNames[location]
     if not slotName then return end
+    local compatible = canEquipForClass(link, location)
+    if compatible == false then return end
 
     local weights, label = activeWeights()
     tooltip:AddLine("CompareDPS", 0.8, 0.65, 0.25)
+    if compatible == nil then
+        tooltip:AddLine("Item compatibility unavailable; try again.", 1, 0.7, 0.2)
+        return
+    end
     if not weights or not next(weights) then
         tooltip:AddLine("Choose a spec using the minimap button.", 1, 0.7, 0.2)
         return

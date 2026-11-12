@@ -36,6 +36,11 @@ The selection is saved per character and takes effect on the next tooltip.
 The addon does not inspect talents or automatically detect your specialization.
 If your class has no profiles, the dropdown reports that none are available.
 
+CompareDPS hides scores for armor and weapon types the class cannot learn, and
+for items restricted to other classes or races when those lists are available.
+Level, learned proficiency, profession and reputation requirements do not
+prevent a score. Other item-specific restrictions may not be detected.
+
 The following commands are also available (for example):
 
 ```text
