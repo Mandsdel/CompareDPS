@@ -12,6 +12,17 @@ local slotNames = {
     INVTYPE_RANGED = "Ranged", INVTYPE_RANGEDRIGHT = "Ranged",
 }
 
+local comparisonSlots = {
+    INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 },
+    INVTYPE_CLOAK = { 15 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
+    INVTYPE_WRIST = { 9 }, INVTYPE_HAND = { 10 }, INVTYPE_WAIST = { 6 },
+    INVTYPE_LEGS = { 7 }, INVTYPE_FEET = { 8 }, INVTYPE_FINGER = { 11, 12 },
+    INVTYPE_TRINKET = { 13, 14 }, INVTYPE_WEAPON = { 16 },
+    INVTYPE_WEAPONMAINHAND = { 16 }, INVTYPE_2HWEAPON = { 16 },
+    INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_HOLDABLE = { 17 },
+    INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 },
+}
+
 local statKeys = {
     ITEM_MOD_INTELLECT_SHORT = "int",
     ITEM_MOD_SPIRIT_SHORT = "spirit",
@@ -196,6 +207,58 @@ local function scoreItem(stats, weights)
     return score
 end
 
+local function bagComparison(tooltip, location, candidateScore, weights)
+    if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
+    local info = tooltip:GetProcessingTooltipInfo()
+    if secret(info) or type(info) ~= "table" or secret(info.getterName) or info.getterName ~= "GetBagItem" then
+        return nil
+    end
+    if type(GetInventoryItemLink) ~= "function" then return "equipped items unavailable" end
+
+    local slots = comparisonSlots[location]
+    local results = {}
+    for _, slot in ipairs(slots) do
+        local equipped = GetInventoryItemLink("player", slot)
+        if secret(equipped) then return "equipped item unavailable" end
+        local oldScore = 0
+        if equipped then
+            local stats = readStats(equipped)
+            if not stats then return "equipped stats unavailable" end
+            local missing
+            oldScore, missing = scoreItem(stats, weights)
+            if missing then return "equipped item missing weights: " .. missing end
+        end
+
+        if slot == 17 then
+            local main = GetInventoryItemLink("player", 16)
+            if secret(main) then return "main hand unavailable" end
+            if main then
+                local mainLocation = itemLocation(main)
+                if not mainLocation then return "main hand data unavailable" end
+                if mainLocation == "INVTYPE_2HWEAPON" then return "requires a one-hand weapon" end
+            end
+        elseif location == "INVTYPE_2HWEAPON" then
+            local offhand = GetInventoryItemLink("player", 17)
+            if secret(offhand) then return "off hand unavailable" end
+            if offhand then
+                local stats = readStats(offhand)
+                if not stats then return "off-hand stats unavailable" end
+                local offScore, missing = scoreItem(stats, weights)
+                if missing then return "off hand missing weights: " .. missing end
+                oldScore = oldScore + offScore
+            end
+        end
+
+        local delta = candidateScore - oldScore
+        if #slots == 2 then
+            results[#results + 1] = string.format("slot %d: %+.2f", #results + 1, delta)
+        else
+            results[#results + 1] = string.format("%+.2f", delta)
+        end
+    end
+    return table.concat(results, ", ")
+end
+
 local function compare(tooltip, data)
     if not CompareDPSDB then return end
     local link = getLink(tooltip, data)
@@ -226,7 +289,9 @@ local function compare(tooltip, data)
     if candidateMissing then
         tooltip:AddLine(slotName .. ": missing weights: " .. candidateMissing, 1, 0.7, 0.2)
     else
-        tooltip:AddLine(string.format("%s: %.2f points", slotName, candidateScore), 1, 1, 1)
+        local comparison = bagComparison(tooltip, location, candidateScore, weights)
+        local suffix = comparison and (" (" .. comparison .. ")") or ""
+        tooltip:AddLine(string.format("%s: %.2f points%s", slotName, candidateScore, suffix), 1, 1, 1, true)
     end
 end
 

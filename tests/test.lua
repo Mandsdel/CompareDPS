@@ -10,6 +10,7 @@ ShoppingTooltip2 = { lines = {} }
 local playerClass = "WARLOCK"
 function UnitClass() return "Warlock", playerClass end
 function GameTooltip:AddLine(text) self.lines[#self.lines + 1] = text end
+function GameTooltip:GetProcessingTooltipInfo() return self.info end
 ShoppingTooltip1.AddLine = GameTooltip.AddLine
 ShoppingTooltip2.AddLine = GameTooltip.AddLine
 SlashCmdList = {}
@@ -31,6 +32,8 @@ local items = {
     ["item:11"] = { loc = "INVTYPE_WAIST", int = 5, spell = 10 },
 }
 C_Item = {}
+local equipped = { [5] = "item:10", [11] = "item:2", [12] = "item:1", [16] = "item:4", [17] = "item:5" }
+function GetInventoryItemLink(_, slot) return equipped[slot] end
 function C_Item.GetItemInfoInstant(link) return 1, nil, nil, items[link] and items[link].loc end
 function C_Item.GetItemLinkByGUID(guid) if guid == "equipped-guid" then return "item:2" end end
 function C_Item.GetItemStats(link)
@@ -79,6 +82,24 @@ local weapon = tooltip("item:3")
 assert(weapon:find("Two-hand: 32.00 points", 1, true), weapon)
 assert(tooltip("item:10"):find("Chest: 9.00 points", 1, true))
 assert(tooltip("item:11"):find("Waist: 12.00 points", 1, true))
+GameTooltip.info = { getterName = "GetBagItem" }
+local baggedRing = tooltip("item:1")
+assert(baggedRing:find("Ring: 18.00 points (slot 1: +9.00, slot 2: +0.00)", 1, true), baggedRing)
+equipped[12] = nil
+assert(tooltip("item:1"):find("(slot 1: +9.00, slot 2: +18.00)", 1, true))
+assert(tooltip("item:10"):find("Chest: 9.00 points (+0.00)", 1, true))
+equipped[5] = "item:11"
+assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
+assert(tooltip("item:3"):find("Two-hand: 32.00 points (+16.00)", 1, true))
+equipped[16] = "item:3"
+assert(tooltip("item:5"):find("(requires a one-hand weapon)", 1, true))
+equipped[11] = "item:7"
+assert(tooltip("item:1"):find("equipped item missing weights: hitrating", 1, true))
+equipped[11] = "item:2"
+GameTooltip.info = { getterName = "GetInventoryItem" }
+local worn = tooltip("item:1")
+assert(worn:find("Ring: 18.00 points", 1, true) and not worn:find("(slot", 1, true), worn)
+GameTooltip.info = nil
 ShoppingTooltip1.lines = {}
 TooltipDataProcessor.callback(ShoppingTooltip1, { guid = "equipped-guid" })
 assert(table.concat(ShoppingTooltip1.lines, "\n"):find("Ring: 9.00 points", 1, true))

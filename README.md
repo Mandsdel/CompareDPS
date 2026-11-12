@@ -51,6 +51,12 @@ weighted value **among the stats counted**.
 These are relative points, not actual DPS. The first time you use the addon,
 select a spec; no preset is automatically chosen.
 
+When hovering over an item in your bags, the number in parentheses is its
+score difference from the equipped item. Positive means a higher score,
+negative a lower score. Rings and trinkets show differences for both equipped
+slots; an empty slot has a score of zero. Equipped-item tooltips do not show
+a difference. Other tooltip sources display the item score without a difference.
+
 The approximate weights come from [ForeverUpgrade's Warlock scales](https://github.com/DemiAutomatic/ForeverUpgrade/blob/main/Scales.lua).
 They are general spec-level starting points, not verified meta builds,
 character-specific simulations, or exact DPS. The source also has a ranged
@@ -78,9 +84,10 @@ the addon reports the missing weight instead of guessing a conversion.
 ## How it works and limitations
 
 Scores are the sum of supported stat amounts multiplied by their weights.
-Each ring and trinket has its own score. When considering a two-handed weapon
-against a one-handed weapon and off-hand, compare its score with the **sum**
-of both equipped item scores.
+Each ring and trinket has its own score. A bagged two-handed weapon is compared
+against the combined main-hand and off-hand scores. A bagged off-hand item
+cannot be compared when a two-handed weapon is equipped without choosing a
+replacement main-hand weapon.
 
 This is **not a combat simulation**. All results are explicitly partial: item
 procs and on-use effects, set bonuses, weapon damage, gem/socket changes,
