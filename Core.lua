@@ -320,11 +320,13 @@ local function scoreItem(stats, weights, location, slot)
     return score
 end
 
-local function bagComparison(tooltip, location, candidateScore, weights)
-    if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
-    local info = tooltip:GetProcessingTooltipInfo()
-    if secret(info) or type(info) ~= "table" or secret(info.getterName) or info.getterName ~= "GetBagItem" then
-        return nil
+local function itemComparison(tooltip, location, candidateScore, weights)
+    if tooltip ~= ItemRefTooltip then
+        if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
+        local info = tooltip:GetProcessingTooltipInfo()
+        if secret(info) or type(info) ~= "table" or secret(info.getterName) or info.getterName ~= "GetBagItem" then
+            return nil
+        end
     end
     if type(GetInventoryItemLink) ~= "function" then return "equipped items unavailable" end
 
@@ -418,7 +420,7 @@ local function compare(tooltip, data)
     if candidateMissing then
         tooltip:AddLine(slotName .. ": missing weights: " .. candidateMissing, 1, 0.7, 0.2)
     else
-        local comparison, color = bagComparison(tooltip, location, candidateScore, weights)
+        local comparison, color = itemComparison(tooltip, location, candidateScore, weights)
         local suffix = comparison and (" (" .. comparison .. ")") or ""
         local r, g, b = 1, 1, 1
         if color == "ff40ff40" then r, g, b = 0.25, 1, 0.25 end
@@ -476,7 +478,8 @@ addon:SetScript("OnEvent", function(_, event, name)
     end
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
         if tooltip == GameTooltip or tooltip == ItemRefTooltip
-            or tooltip == ShoppingTooltip1 or tooltip == ShoppingTooltip2 then
+            or tooltip == ShoppingTooltip1 or tooltip == ShoppingTooltip2
+            or tooltip == ItemRefShoppingTooltip1 or tooltip == ItemRefShoppingTooltip2 then
             compare(tooltip, data)
         end
     end)

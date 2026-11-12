@@ -4,9 +4,11 @@ function frame:SetScript(_, handler) self.handler = handler end
 function CreateFrame() return frame end
 
 GameTooltip = { lines = {} }
-ItemRefTooltip = {}
+ItemRefTooltip = { lines = {} }
 ShoppingTooltip1 = { lines = {} }
 ShoppingTooltip2 = { lines = {} }
+ItemRefShoppingTooltip1 = { lines = {} }
+ItemRefShoppingTooltip2 = { lines = {} }
 local playerClass = "WARLOCK"
 function UnitClass() return "Warlock", playerClass end
 function GameTooltip:AddLine(text, r, g, b)
@@ -17,6 +19,9 @@ end
 function GameTooltip:GetProcessingTooltipInfo() return self.info end
 ShoppingTooltip1.AddLine = GameTooltip.AddLine
 ShoppingTooltip2.AddLine = GameTooltip.AddLine
+ItemRefTooltip.AddLine = GameTooltip.AddLine
+ItemRefShoppingTooltip1.AddLine = GameTooltip.AddLine
+ItemRefShoppingTooltip2.AddLine = GameTooltip.AddLine
 SlashCmdList = {}
 Enum = { TooltipDataType = { Item = 1 } }
 TooltipDataProcessor = {}
@@ -147,6 +152,18 @@ assert(table.concat(ShoppingTooltip2.lines, "\n"):find("Ring: 18.00 points", 1, 
 ShoppingTooltip2.lines = {}
 TooltipDataProcessor.callback(ShoppingTooltip2, { id = 1 })
 assert(table.concat(ShoppingTooltip2.lines, "\n"):find("item link unavailable", 1, true))
+ItemRefTooltip.lines = {}
+TooltipDataProcessor.callback(ItemRefTooltip, { hyperlink = "item:10" })
+local linked = table.concat(ItemRefTooltip.lines, "\n")
+assert(linked:find("Chest: 9.00 points (-3.00)", 1, true), linked)
+assert(ItemRefTooltip.colors[3][1] == 1 and ItemRefTooltip.colors[3][2] == 0.25)
+for _, refShoppingTooltip in ipairs({ ItemRefShoppingTooltip1, ItemRefShoppingTooltip2 }) do
+    refShoppingTooltip.lines = {}
+    TooltipDataProcessor.callback(refShoppingTooltip, { guid = "equipped-guid" })
+    local refEquipped = table.concat(refShoppingTooltip.lines, "\n")
+    assert(refEquipped:find("Ring: 9.00 points", 1, true) and not refEquipped:find("(slot", 1, true), refEquipped)
+    assert(refShoppingTooltip.colors[3][1] == 1 and refShoppingTooltip.colors[3][2] == 1)
+end
 
 for _, case in ipairs({
     { "affliction", "Affliction", 18, 13 },
