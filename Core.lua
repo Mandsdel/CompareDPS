@@ -124,6 +124,15 @@ local function getLink(tooltip, data)
     if not secret(link) and type(link) == "string" and link:find("item:", 1, true) then
         return link
     end
+    local info = type(tooltip.GetProcessingTooltipInfo) == "function" and tooltip:GetProcessingTooltipInfo()
+    if not secret(info) and type(info) == "table" and not secret(info.getterName)
+        and info.getterName == "GetHyperlink" and not secret(info.getterArgs)
+        and type(info.getterArgs) == "table" then
+        link = info.getterArgs[1]
+        if not secret(link) and type(link) == "string" and link:find("item:", 1, true) then
+            return link
+        end
+    end
     if type(tooltip.GetItem) == "function" then
         local _, itemLink = tooltip:GetItem()
         if not secret(itemLink) and type(itemLink) == "string" and itemLink:find("item:", 1, true) then
@@ -312,7 +321,12 @@ local function itemComparison(tooltip, location, candidateScore, weights)
     if tooltip ~= ItemRefTooltip then
         if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
         local info = tooltip:GetProcessingTooltipInfo()
-        if secret(info) or type(info) ~= "table" or secret(info.getterName) or info.getterName ~= "GetBagItem" then
+        if secret(info) or type(info) ~= "table" or secret(info.getterName) then
+            return nil
+        end
+        local journalItem = info.getterName == "GetHyperlink" and not secret(info.compareItem)
+            and info.compareItem == true
+        if info.getterName ~= "GetBagItem" and not journalItem then
             return nil
         end
     end
