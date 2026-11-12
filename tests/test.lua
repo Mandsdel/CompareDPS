@@ -5,9 +5,13 @@ function CreateFrame() return frame end
 
 GameTooltip = { lines = {} }
 ItemRefTooltip = {}
+ShoppingTooltip1 = { lines = {} }
+ShoppingTooltip2 = { lines = {} }
 local playerClass = "WARLOCK"
 function UnitClass() return "Warlock", playerClass end
 function GameTooltip:AddLine(text) self.lines[#self.lines + 1] = text end
+ShoppingTooltip1.AddLine = GameTooltip.AddLine
+ShoppingTooltip2.AddLine = GameTooltip.AddLine
 SlashCmdList = {}
 Enum = { TooltipDataType = { Item = 1 } }
 TooltipDataProcessor = {}
@@ -23,10 +27,12 @@ local items = {
     ["item:7"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, rating = 5 },
     ["item:8"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, rating = 5, hit = 1 },
     ["item:9"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, fire = 10 },
+    ["item:10"] = { loc = "INVTYPE_CHEST", int = 10, spell = 5 },
+    ["item:11"] = { loc = "INVTYPE_WAIST", int = 5, spell = 10 },
 }
-local equipped = { [11] = "item:2", [16] = "item:4", [17] = "item:5" }
 C_Item = {}
 function C_Item.GetItemInfoInstant(link) return 1, nil, nil, items[link] and items[link].loc end
+function C_Item.GetItemLinkByGUID(guid) if guid == "equipped-guid" then return "item:2" end end
 function C_Item.GetItemStats(link)
     local item = items[link]
     return item and {
@@ -50,8 +56,6 @@ function C_TooltipInfo.GetHyperlink(link)
     end
     return { lines = lines }
 end
-function GetInventoryItemLink(_, slot) return equipped[slot] end
-
 local namespace = {}
 assert(loadfile("Profiles.lua"))("CompareDPS", namespace)
 assert(loadfile("Core.lua"))("CompareDPS", namespace)
@@ -67,14 +71,23 @@ assert(tooltip("item:1"):find("Choose a spec", 1, true))
 assert(namespace.selectProfile("demonology"))
 assert(CompareDPSDB.profile == "demonology")
 local rings = tooltip("item:1")
-assert(rings:find("Item: 18.00 points", 1, true), rings)
-assert(rings:find("Ring 1: 9.00 points (+9.00)", 1, true), rings)
-assert(rings:find("Ring 2: 0.00 points (+18.00)", 1, true), rings)
+assert(rings:find("Ring: 18.00 points", 1, true), rings)
+assert(#GameTooltip.lines == 3, rings)
+assert(not rings:find("Item:", 1, true) and not rings:find("Settings:", 1, true), rings)
 
 local weapon = tooltip("item:3")
-assert(weapon:find("Main hand: 16.00 points (+16.00)", 1, true), weapon)
-equipped[16] = "item:3"
-assert(tooltip("item:5"):find("requires a one-hand weapon", 1, true))
+assert(weapon:find("Two-hand: 32.00 points", 1, true), weapon)
+assert(tooltip("item:10"):find("Chest: 9.00 points", 1, true))
+assert(tooltip("item:11"):find("Waist: 12.00 points", 1, true))
+ShoppingTooltip1.lines = {}
+TooltipDataProcessor.callback(ShoppingTooltip1, { guid = "equipped-guid" })
+assert(table.concat(ShoppingTooltip1.lines, "\n"):find("Ring: 9.00 points", 1, true))
+ShoppingTooltip2.lines = {}
+TooltipDataProcessor.callback(ShoppingTooltip2, { hyperlink = "item:1" })
+assert(table.concat(ShoppingTooltip2.lines, "\n"):find("Ring: 18.00 points", 1, true))
+ShoppingTooltip2.lines = {}
+TooltipDataProcessor.callback(ShoppingTooltip2, { id = 1 })
+assert(table.concat(ShoppingTooltip2.lines, "\n"):find("item link unavailable", 1, true))
 
 for _, case in ipairs({
     { "affliction", "Affliction", 18, 13 },
@@ -84,12 +97,12 @@ for _, case in ipairs({
     assert(namespace.selectProfile(case[1]))
     local result = tooltip("item:1")
     assert(result:find(case[2] .. " - relative score", 1, true), result)
-    assert(result:find(string.format("Item: %.2f points", case[3]), 1, true), result)
+    assert(result:find(string.format("Ring: %.2f points", case[3]), 1, true), result)
     local mana = tooltip("item:6")
-    assert(mana:find(string.format("Item: %.2f points", case[4]), 1, true), mana)
+    assert(mana:find(string.format("Ring: %.2f points", case[4]), 1, true), mana)
     assert(tooltip("item:7"):find("missing weights: hitrating", 1, true))
     local hit = tooltip("item:8")
-    assert(hit:find("Item: " .. (case[1] == "demonology" and "12.00" or "13.00") .. " points", 1, true), hit)
+    assert(hit:find("Ring: " .. (case[1] == "demonology" and "12.00" or "13.00") .. " points", 1, true), hit)
 end
 SlashCmdList.COMPAREDPS("spec affliction")
 assert(tooltip("item:9"):find("missing weights: fire", 1, true))

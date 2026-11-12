@@ -1,23 +1,15 @@
 local _, namespace = ...
 local addon = CreateFrame("Frame")
 
-local slots = {
-    INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 },
-    INVTYPE_CLOAK = { 15 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
-    INVTYPE_WRIST = { 9 }, INVTYPE_HAND = { 10 }, INVTYPE_WAIST = { 6 },
-    INVTYPE_LEGS = { 7 }, INVTYPE_FEET = { 8 }, INVTYPE_FINGER = { 11, 12 },
-    INVTYPE_TRINKET = { 13, 14 }, INVTYPE_WEAPON = { 16 },
-    INVTYPE_WEAPONMAINHAND = { 16 }, INVTYPE_2HWEAPON = { 16 },
-    INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_HOLDABLE = { 17 },
-    INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 },
-}
-
 local slotNames = {
-    [1] = "Head", [2] = "Neck", [3] = "Shoulder", [5] = "Chest",
-    [6] = "Waist", [7] = "Legs", [8] = "Feet", [9] = "Wrist",
-    [10] = "Hands", [11] = "Ring 1", [12] = "Ring 2", [13] = "Trinket 1",
-    [14] = "Trinket 2", [15] = "Back", [16] = "Main hand",
-    [17] = "Off hand", [18] = "Ranged",
+    INVTYPE_HEAD = "Head", INVTYPE_NECK = "Neck", INVTYPE_SHOULDER = "Shoulder",
+    INVTYPE_CLOAK = "Back", INVTYPE_CHEST = "Chest", INVTYPE_ROBE = "Chest",
+    INVTYPE_WRIST = "Wrist", INVTYPE_HAND = "Hands", INVTYPE_WAIST = "Waist",
+    INVTYPE_LEGS = "Legs", INVTYPE_FEET = "Feet", INVTYPE_FINGER = "Ring",
+    INVTYPE_TRINKET = "Trinket", INVTYPE_WEAPON = "Weapon",
+    INVTYPE_WEAPONMAINHAND = "Main hand", INVTYPE_2HWEAPON = "Two-hand",
+    INVTYPE_WEAPONOFFHAND = "Off hand", INVTYPE_HOLDABLE = "Off hand",
+    INVTYPE_RANGED = "Ranged", INVTYPE_RANGEDRIGHT = "Ranged",
 }
 
 local statKeys = {
@@ -90,6 +82,13 @@ local function getLink(tooltip, data)
     end
     if type(tooltip.GetItem) == "function" then
         local _, itemLink = tooltip:GetItem()
+        if not secret(itemLink) and type(itemLink) == "string" and itemLink:find("item:", 1, true) then
+            return itemLink
+        end
+    end
+    local guid = type(data) == "table" and data.guid
+    if guid and not secret(guid) and C_Item and type(C_Item.GetItemLinkByGUID) == "function" then
+        local itemLink = C_Item.GetItemLinkByGUID(guid)
         if not secret(itemLink) and type(itemLink) == "string" and itemLink:find("item:", 1, true) then
             return itemLink
         end
@@ -178,15 +177,10 @@ local function readStats(link)
     return stats
 end
 
-local function difference(candidate, oldItems, weights)
-    local delta = {}
-    for key, value in pairs(candidate) do delta[key] = value end
-    for _, item in ipairs(oldItems) do
-        for key, value in pairs(item) do add(delta, key, -value) end
-    end
+local function scoreItem(stats, weights)
     local score, missing = 0, {}
     for _, key in ipairs(statOrder) do
-        local value = delta[key]
+        local value = stats[key]
         if value and value ~= 0 then
             local weight = weights[key]
             if weight == nil then
@@ -205,10 +199,16 @@ end
 local function compare(tooltip, data)
     if not CompareDPSDB then return end
     local link = getLink(tooltip, data)
-    if not link then return end
+    if not link then
+        local id = type(data) == "table" and data.id
+        if not secret(id) and type(id) == "number" and id > 0 then
+            tooltip:AddLine("CompareDPS: item link unavailable", 1, 0.7, 0.2)
+        end
+        return
+    end
     local location = itemLocation(link)
-    local targets = location and slots[location]
-    if not targets then return end
+    local slotName = location and slotNames[location]
+    if not slotName then return end
 
     local weights, label = activeWeights()
     tooltip:AddLine("CompareDPS (partial estimate)", 0.5, 0.8, 1)
@@ -222,67 +222,12 @@ local function compare(tooltip, data)
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
         return
     end
-    local candidateScore, candidateMissing = difference(candidate, {}, weights)
+    local candidateScore, candidateMissing = scoreItem(candidate, weights)
     if candidateMissing then
-        tooltip:AddLine("Item score unavailable; missing weights: " .. candidateMissing, 1, 0.7, 0.2)
+        tooltip:AddLine(slotName .. ": missing weights: " .. candidateMissing, 1, 0.7, 0.2)
     else
-        tooltip:AddLine(string.format("Item: %.2f points", candidateScore), 1, 1, 1)
+        tooltip:AddLine(string.format("%s: %.2f points", slotName, candidateScore), 1, 1, 1)
     end
-
-    for _, slot in ipairs(targets) do
-        local equipped = GetInventoryItemLink("player", slot)
-        local oldItems = {}
-        local problem
-        if secret(equipped) then
-            problem = "equipped item unavailable"
-        elseif equipped then
-            local old = readStats(equipped)
-            if old then oldItems[#oldItems + 1] = old else problem = "equipped stats unavailable" end
-        end
-
-        if slot == 17 then
-            local main = GetInventoryItemLink("player", 16)
-            if secret(main) then
-                problem = "main hand unavailable"
-            elseif main then
-                local mainLocation = itemLocation(main)
-                if not mainLocation then
-                    problem = "main hand data unavailable"
-                elseif mainLocation == "INVTYPE_2HWEAPON" then
-                    problem = "requires a one-hand weapon"
-                end
-            end
-        elseif slot == 16 and location == "INVTYPE_2HWEAPON" then
-            local offhand = GetInventoryItemLink("player", 17)
-            if secret(offhand) then
-                problem = "off hand unavailable"
-            elseif offhand then
-                local old = readStats(offhand)
-                if old then oldItems[#oldItems + 1] = old else problem = "off-hand stats unavailable" end
-            end
-        end
-
-        local score, missing, oldScore, oldMissing
-        if not problem then
-            score, missing = difference(candidate, oldItems, weights)
-            oldScore, oldMissing = difference({}, oldItems, weights)
-        end
-        if problem then
-            tooltip:AddLine(slotNames[slot] .. ": " .. problem, 1, 0.7, 0.2)
-        elseif missing then
-            tooltip:AddLine(slotNames[slot] .. ": missing weights: " .. missing, 1, 0.7, 0.2)
-        else
-            local r, g = 1, 0.82
-            if score > 0 then r, g = 0.3, 1 elseif score < 0 then r, g = 1, 0.3 end
-            if oldMissing then
-                tooltip:AddLine(string.format("%s: %+.2f points (equipped score unavailable: %s)", slotNames[slot], score, oldMissing), r, g, 0.3, true)
-            else
-                tooltip:AddLine(string.format("%s: %.2f points (%+.2f)", slotNames[slot], -oldScore, score), r, g, 0.3)
-            end
-        end
-    end
-    tooltip:AddLine("Only supported stats; effects and enchants may be missing.", 1, 0.7, 0.2, true)
-    tooltip:AddLine("Settings: minimap button", 0.7, 0.7, 0.7)
 end
 
 local function command(input)
@@ -333,7 +278,8 @@ addon:SetScript("OnEvent", function(_, event, name)
         return
     end
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-        if tooltip == GameTooltip or tooltip == ItemRefTooltip then
+        if tooltip == GameTooltip or tooltip == ItemRefTooltip
+            or tooltip == ShoppingTooltip1 or tooltip == ShoppingTooltip2 then
             compare(tooltip, data)
         end
     end)

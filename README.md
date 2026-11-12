@@ -7,8 +7,7 @@ The Forever client has not yet been tested with this addon.
 
 ## Install
 
-On the desktop, close WoW Forever, pull this repository, and run from the
-`CompareDPS` folder:
+On the desktop, pull this repository and run from the `CompareDPS` folder:
 
 ```powershell
 git pull --ff-only origin main
@@ -26,7 +25,8 @@ backup. For a different AddOns directory, use:
 
 If PowerShell blocks scripts, use
 `powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-CompareDPS.ps1`.
-Start the game and enable CompareDPS at character selection.
+Enable CompareDPS at character selection. If it is already enabled and the
+game is running, use `/reload` to load the updated files.
 
 ## Warlock presets
 
@@ -45,8 +45,9 @@ The following commands are also available:
 /comparedps list
 ```
 
-The tooltip shows the item's score, the equipped item's score, and the
-difference. Higher means more weighted value **among the stats counted**.
+Each item tooltip shows its own score beside its slot name. Compare it with
+the score shown on the equipped item's comparison tooltip. Higher means more
+weighted value **among the stats counted**.
 These are relative points, not actual DPS. The first time you use the addon,
 select a spec; no preset is automatically chosen.
 
@@ -77,10 +78,9 @@ the addon reports the missing weight instead of guessing a conversion.
 ## How it works and limitations
 
 Scores are the sum of supported stat amounts multiplied by their weights.
-Rings and trinkets are compared against both slots. A two-handed item is
-compared against the combined main hand and off hand. An off-hand item cannot
-be compared against a currently equipped two-hander without choosing a
-replacement main hand.
+Each ring and trinket has its own score. When considering a two-handed weapon
+against a one-handed weapon and off-hand, compare its score with the **sum**
+of both equipped item scores.
 
 This is **not a combat simulation**. All results are explicitly partial: item
 procs and on-use effects, set bonuses, weapon damage, gem/socket changes,
