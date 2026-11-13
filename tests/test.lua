@@ -26,7 +26,7 @@ ItemRefTooltip.AddLine = GameTooltip.AddLine
 ItemRefShoppingTooltip1.AddLine = GameTooltip.AddLine
 ItemRefShoppingTooltip2.AddLine = GameTooltip.AddLine
 SlashCmdList = {}
-Enum = { TooltipDataType = { Item = 1 } }
+Enum = { TooltipDataType = { Item = 1, Spell = 2 }, TooltipDataLineType = { NestedBlock = 19 } }
 TooltipDataProcessor = {}
 function TooltipDataProcessor.AddTooltipPostCall(_, callback) TooltipDataProcessor.callback = callback end
 
@@ -67,10 +67,17 @@ local items = {
     ["item:34"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4, spellPenAPI = 4 },
     ["item:35"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4 },
     ["item:36"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPenText = 4 },
+    ["item:100"] = { loc = "", int = 0, spell = 0, classID = 9 },
+    ["item:101"] = { loc = "", int = 0, spell = 0, classID = 9 },
+    ["item:102"] = { loc = "", int = 0, spell = 0, classID = 9 },
+    ["item:103"] = { loc = "", int = 0, spell = 0, classID = 9 },
+    ["item:104"] = { loc = "", int = 0, spell = 0, classID = 9 },
+    ["item:105"] = { loc = "", int = 0, spell = 0 },
 }
 C_Item = {}
 local equipped = { [5] = "item:10", [11] = "item:2", [12] = "item:1", [16] = "item:4", [17] = "item:5" }
 function GetInventoryItemLink(_, slot) return equipped[slot] end
+function GetMerchantItemLink(index) if index == 1 then return "item:100" end end
 ItemLocation = {}
 function ItemLocation:CreateFromEquipmentSlot(slot) return slot end
 function C_Item.GetItemGUID(slot) return "guid:" .. slot end
@@ -82,6 +89,7 @@ function C_Item.GetItemInfoInstant(link)
     return 1, nil, nil, item.loc, nil, classID, item.subclass or 0
 end
 function C_Item.GetItemLinkByGUID(guid) if guid == "equipped-guid" then return "item:2" end end
+function C_Item.GetItemInfo(link) if items[link] then return "Item " .. link end end
 function C_Item.GetItemStats(link)
     local item = items[link]
     return item and {
@@ -99,6 +107,22 @@ function C_Item.GetItemStats(link)
 end
 C_TooltipInfo = {}
 function C_TooltipInfo.GetHyperlink(link)
+    if link == "spell:200" then
+        return { lines = { { type = 19, tooltipType = 1, tooltipID = 10 } } }
+    end
+    if link == "item:100" then
+        return { lines = { { type = 19, tooltipType = 1, tooltipID = 10 } } }
+    end
+    if link == "item:101" then
+        return { lines = { { type = 19, tooltipType = 2, tooltipID = 200 } } }
+    end
+    if link == "item:102" then return { lines = {} } end
+    if link == "item:103" then
+        return { lines = { { type = 19, tooltipType = 1, tooltipID = 105 } } }
+    end
+    if link == "item:104" then
+        return { lines = { { type = 19, tooltipType = 1, tooltipID = 999 } } }
+    end
     local item = items[link]
     if not item then return nil end
     local lines = {
@@ -158,6 +182,29 @@ end
 assert(tooltip("item:1"):find("Choose a spec", 1, true))
 assert(namespace.selectProfile("demonology"))
 assert(CompareDPSDB.profile == "demonology")
+GameTooltip.info = { getterName = "GetMerchantItem" }
+local recipe = tooltip("item:100")
+assert(recipe:find("Crafted item: Item item:10", 1, true), recipe)
+assert(recipe:find("Chest: 9.00 points (+0.00)", 1, true), recipe)
+assert(tooltip("item:101"):find("Chest: 9.00 points (+0.00)", 1, true))
+assert(tooltip("item:102"):find("crafted item unavailable", 1, true))
+assert(tooltip("item:103") == "")
+assert(tooltip("item:104"):find("crafted item data unavailable", 1, true))
+GameTooltip.info = { getterName = "GetMerchantItem", getterArgs = { 1 } }
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, {})
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+GameTooltip.info = nil
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { id = 100 })
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+ItemRefTooltip.lines, ItemRefTooltip.colors = {}, {}
+TooltipDataProcessor.callback(ItemRefTooltip, {
+    hyperlink = "item:100",
+    lines = { { type = 19, tooltipType = 1, tooltipID = 10 } },
+})
+assert(table.concat(ItemRefTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+GameTooltip.info = nil
 assert(tooltip("item:34"):find("Head: 0.40 points", 1, true))
 assert(tooltip("item:35"):find("Head: 0.40 points", 1, true))
 assert(tooltip("item:36"):find("Head: 0.40 points", 1, true))
@@ -204,6 +251,9 @@ equipped[11] = "item:2"
 assert(tooltip("item:10"):find("Chest: 9.00 points (+0.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 1 and GameTooltip.colors[3][3] == 1)
 equipped[5] = "item:11"
+assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
+assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
+GameTooltip.info = { getterName = "GetMerchantItem", getterArgs = { 1 } }
 assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
 GameTooltip.info = { getterName = "GetHyperlink", getterArgs = { "item:10" }, compareItem = true }
