@@ -67,6 +67,8 @@ local items = {
     ["item:34"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4, spellPenAPI = 4 },
     ["item:35"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4 },
     ["item:36"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPenText = 4 },
+    ["item:37"] = { loc = "INVTYPE_LEGS", int = 10, spell = 5 },
+    ["item:38"] = { loc = "INVTYPE_LEGS", int = 5, spell = 5 },
     ["item:100"] = { loc = "", int = 0, spell = 0, classID = 9 },
     ["item:101"] = { loc = "", int = 0, spell = 0, classID = 9 },
     ["item:102"] = { loc = "", int = 0, spell = 0, classID = 9 },
@@ -253,6 +255,14 @@ assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 1 and GameT
 equipped[5] = "item:11"
 assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
+equipped[7] = "item:38"
+for _, getter in ipairs({ "GetRecipeResultItem", "GetRecipeResultItemForOrder" }) do
+    GameTooltip.info = { getterName = getter, getterArgs = { 123 } }
+    local crafted = tooltip("item:37")
+    assert(crafted:find("Legs: 9.00 points (+2.00)", 1, true), crafted)
+    assert(GameTooltip.colors[3][1] == 0.25 and GameTooltip.colors[3][2] == 1)
+end
+equipped[7] = nil
 GameTooltip.info = { getterName = "GetMerchantItem", getterArgs = { 1 } }
 assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
