@@ -2,6 +2,7 @@ local frames = {}
 local methods = {}
 function methods:SetScript(event, handler) self.scripts[event] = handler end
 function methods:SetText(text) self.text = text end
+function methods:GetText() return self.text end
 function methods:Show()
     self.shown = true
     if self.scripts.OnShow then self.scripts.OnShow(self) end
@@ -19,7 +20,7 @@ for _, name in ipairs({
     "SetSize", "SetPoint", "ClearAllPoints", "SetHeight", "SetFrameLevel",
     "SetFrameStrata", "SetClampedToScreen", "SetAllPoints", "SetColorTexture",
     "SetTexture", "SetTexCoord", "SetHighlightTexture", "RegisterForClicks",
-    "SetJustifyH",
+    "SetJustifyH", "SetAutoFocus", "ClearFocus", "SetFocus", "RegisterEvent",
 }) do methods[name] = function() end end
 function CreateFrame(kind, name, parent, template)
     local frame = setmetatable({
@@ -52,14 +53,11 @@ else
     }
 end
 local class = "WARLOCK"
+function UnitClass() return class, class end
+SlashCmdList = {}
 local addon = {}
 assert(loadfile("Profiles.lua"))("CompareDPS", addon)
-function addon.classProfiles() return addon.profiles[class] end
-function addon.selectProfile(key)
-    assert(addon.classProfiles()[key])
-    CompareDPSDB.profile = key
-    addon.refreshOptions()
-end
+assert(loadfile("Core.lua"))("CompareDPS", addon)
 assert(loadfile("Options.lua"))("CompareDPS", addon)
 addon.initializeOptions()
 addon.initializeOptions()
@@ -81,7 +79,8 @@ end
 assert(dropdown)
 local settingsDropdown
 for _, frame in ipairs(frames) do
-    if frame.parent == registeredPanel and frame.template == "UIPanelButtonTemplate" then
+    if frame.parent == registeredPanel and frame.template == "UIPanelButtonTemplate"
+        and frame.text == "Select specialization  v" then
         settingsDropdown = frame
     end
 end
@@ -175,6 +174,101 @@ for classKey, profiles in pairs(addon.profiles) do
         end
     end
 end
+class = "DRUID"
+addon.selectProfile("feraltank")
+local function control(parent, text)
+    for _, frame in ipairs(frames) do
+        if frame.parent == parent and frame.kind == "Button" and frame.text == text then return frame end
+    end
+    error("Missing button " .. text)
+end
+local function input(parent, label)
+    for i, frame in ipairs(frames) do
+        if frame.parent == parent and frame.kind == "FontString" and frame.text == label and frame.shown then
+            local editBox = frames[i + 2]
+            assert(editBox.kind == "EditBox" and editBox.shown)
+            return editBox
+        end
+    end
+    error("Missing editable weight " .. label)
+end
+class = "WARLOCK"
+addon.selectProfile("demonology")
+local baseline = addon.profiles.WARLOCK.demonology.weights.spellpower
+local edit = control(dropdown.parent, "Edit")
+local save = control(dropdown.parent, "Save")
+local cancel = control(dropdown.parent, "Cancel")
+edit.scripts.OnClick()
+assert(save.shown and cancel.shown and not edit.shown)
+input(dropdown.parent, "Spell power"):SetText("2.5")
+input(dropdown.parent, "Fire spell power"):SetText("0")
+input(dropdown.parent, "Spirit"):SetText("-0.25")
+assert(addon.activeWeights().spellpower == baseline)
+save.scripts.OnClick()
+assert(addon.activeWeights().spellpower == 2.5)
+assert(addon.activeWeights().fire == 0 and addon.activeWeights().spirit == -0.25)
+assert(addon.profiles.WARLOCK.demonology.weights.spellpower == baseline)
+assert(displayedWeights(registeredPanel)["Spell power"] == "2.5")
+addon.selectProfile("affliction")
+assert(addon.activeWeights().spellpower == 1)
+addon.selectProfile("demonology")
+assert(addon.activeWeights().spellpower == 2.5)
+edit.scripts.OnClick()
+input(dropdown.parent, "Spell power"):SetText("99")
+cancel.scripts.OnClick()
+assert(displayedWeights(dropdown.parent)["Spell power"] == "2.5")
+for _, invalid in ipairs({ "", "abc", "1e999" }) do
+    edit.scripts.OnClick()
+    input(dropdown.parent, "Spell power"):SetText(invalid)
+    save.scripts.OnClick()
+    assert(save.shown and addon.activeWeights().spellpower == 2.5)
+    local reported = false
+    for _, frame in ipairs(frames) do
+        if frame.parent == dropdown.parent and frame.text and frame.text:find("Invalid weight", 1, true) then
+            reported = true
+        end
+    end
+    assert(reported)
+    cancel.scripts.OnClick()
+end
+edit.scripts.OnClick()
+input(dropdown.parent, "Spell power"):SetText("99")
+addon.selectProfile("affliction")
+assert(not save.shown and addon.activeWeights().spellpower == 1)
+addon.selectProfile("demonology")
+assert(addon.activeWeights().spellpower == 2.5)
+edit.scripts.OnClick()
+input(dropdown.parent, "Spell power"):SetText("99")
+addon.toggleOptions()
+addon.toggleOptions()
+assert(not save.shown and displayedWeights(dropdown.parent)["Spell power"] == "2.5")
+edit.scripts.OnClick()
+input(dropdown.parent, "Spell power"):SetText("99")
+control(registeredPanel, "Edit").scripts.OnClick()
+assert(not save.shown)
+assert(input(registeredPanel, "Spell power"):GetText() == "2.5")
+input(registeredPanel, "Spell power"):SetText("3")
+control(registeredPanel, "Save").scripts.OnClick()
+assert(displayedWeights(dropdown.parent)["Spell power"] == "3")
+addon.selectProfile("affliction")
+control(registeredPanel, "Edit").scripts.OnClick()
+input(registeredPanel, "Spell power"):SetText("4")
+control(registeredPanel, "Save").scripts.OnClick()
+addon.selectProfile("demonology")
+edit.scripts.OnClick()
+input(dropdown.parent, "Spell power"):SetText("99")
+control(dropdown.parent, "Reset to Default").scripts.OnClick()
+assert(not save.shown and addon.activeWeights().spellpower == baseline)
+assert(CompareDPSDB.customWeights.demonology == nil)
+addon.selectProfile("affliction")
+assert(addon.activeWeights().spellpower == 4)
+edit.scripts.OnClick()
+input(dropdown.parent, "Spell power").scripts.OnEscapePressed()
+assert(not save.shown)
+edit.scripts.OnClick()
+registeredPanel:Hide()
+assert(save.shown)
+cancel.scripts.OnClick()
 class = "DRUID"
 addon.selectProfile("feraltank")
 class = "UNSUPPORTED"

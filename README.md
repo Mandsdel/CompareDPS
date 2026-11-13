@@ -22,7 +22,7 @@ Enable the addon or use `/reload` if the game is already running.
 Open the CompareDPS window with **`/compare`** (or `/comparedps`) or the
 **CompareDPS minimap button**. The same options are available under
 **Options > AddOns > CompareDPS**. Choose a specialization from the dropdown
-to see its current, read-only stat weights. Both views update immediately
+to see its current stat weights. Both views update immediately
 when the selection changes, including changes made with the `spec` command.
 All class profiles are supported; only your class's specializations are listed.
 The choice is
@@ -42,15 +42,24 @@ account for weapon DPS and speed where the selected profile has weights.
 
 ## Weights and limits
 
-Each spec has approximate stat weights. A stat with no weight contributes
+Each spec starts with approximate default stat weights. A stat with no weight contributes
 zero; unlisted stats in the options view have weight zero. Values are relative
 gear points per stat unit, with percentage stats weighted per 1 percentage
 point and weapon speed per second. Negative weights are shown as-is.
-The score only reflects stats CompareDPS can read. Spell penetration
+The score only reflects stats CompareDPS can read. By default, spell penetration
 is weighted at **0.1 per point** for Mage, Warlock, Shadow Priest, Balance
 Druid and Elemental Shaman profiles; it is **0.05 per point** for Hunter and
 Enhancement Shaman profiles. It has no weight on other specs. Thus, 4 spell
 penetration adds 0.4 or 0.2 points, respectively.
+
+Click **Edit** to change the weights already listed for the selected spec,
+then **Save** to apply them to gear scoring and both options views. Zero,
+decimal and negative values are allowed; invalid or empty fields must be
+corrected before saving. Custom weights are saved per character and spec.
+**Cancel**, Escape in a weight field, closing the editing view, or switching
+spec discards unsaved changes. **Reset to Default** immediately restores the
+selected spec's built-in weights and discards any edits for it, without
+affecting custom weights saved for other specs.
 
 Spell penetration reduces a target's existing magical resistance; it is not
 spell hit and does not remove resistance from a target's higher level. Its
