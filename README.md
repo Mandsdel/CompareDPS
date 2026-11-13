@@ -77,3 +77,11 @@ CompareDPS is not a combat simulator. It may omit procs, on-use effects, set
 bonuses, enchants, caps, unsupported stats and tooltip formats. English
 classic-style item text is parsed on a best-effort basis, and item data may
 need to load before it can be scored. Verify upgrades in the game.
+
+Percentage bonuses are recognized only for supported tooltip wording about the
+player's own stats; effects such as resistance to Sleep are not hit bonuses.
+When only an API rating is available, the current estimates use 10 hit, 14
+critical strike, 12 dodge or 15 parry rating per percentage point. These fixed
+conversions are approximations, not verified level-dependent Forever values.
+Haste and block rating are not converted to percentages. Defense skill rating
+is currently scored as defense skill.

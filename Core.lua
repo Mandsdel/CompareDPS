@@ -332,54 +332,73 @@ local function tooltipStats(link)
             value = text:match("^%+?(%d+%.?%d*)%%%s+block$")
             if value then add(values, "block", tonumber(value)) end
             if text:find("equip:", 1, true) then
-                value = text:match("spell penetration.-by (%d+)")
+                value = text:match("^equip:%s+increases your spell penetration by (%d+)")
+                    or text:match("^equip:%s+increases spell penetration by (%d+)")
                 if value then add(values, "spellpen", tonumber(value)) end
-                local healing, damage = text:match("healing.-up to (%d+).-damage.-up to (%d+)")
+                local beneficial = text:match("^equip:%s+increases ") or text:match("^equip:%s+improves ")
+                local healing, damage
+                if beneficial and text:find("healing done", 1, true)
+                    and text:find("damage done", 1, true) then
+                    healing, damage = text:match("healing.-up to (%d+).-damage.-up to (%d+)")
+                end
                 if healing and damage then
                     add(values, "heal", tonumber(healing))
                     add(values, "spellpower", tonumber(damage))
-                elseif text:find("damage and healing", 1, true)
+                elseif beneficial and text:find("damage and healing done", 1, true)
                     and text:find("spell", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "spellpower", tonumber(value)) end
-                elseif text:find("shadow spells", 1, true) then
+                elseif beneficial and text:find("damage done by shadow spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "shadow", tonumber(value)) end
-                elseif text:find("fire spells", 1, true) then
+                elseif beneficial and text:find("damage done by fire spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "fire", tonumber(value)) end
-                elseif text:find("frost spells", 1, true) then
+                elseif beneficial and text:find("damage done by frost spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "frost", tonumber(value)) end
-                elseif text:find("arcane spells", 1, true) then
+                elseif beneficial and text:find("damage done by arcane spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "arcane", tonumber(value)) end
-                elseif text:find("nature spells", 1, true) then
+                elseif beneficial and text:find("damage done by nature spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "nature", tonumber(value)) end
-                elseif text:find("holy spells", 1, true) then
+                elseif beneficial and text:find("damage done by holy spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "holy", tonumber(value)) end
-                elseif text:find("healing", 1, true) then
+                elseif beneficial and text:find("healing done", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "heal", tonumber(value)) end
                 end
-                if not text:find("critical", 1, true) then
-                    value = text:match("hit.-by (%d+%.?%d*)%%")
+                local bonus = text:match("^equip:%s+improves your (.+)$")
+                    or text:match("^equip:%s+increases your (.+)$")
+                if bonus then
+                    value = bonus:match("^chance to hit.-by (%d+%.?%d*)%%")
                     if value then add(values, "hit", tonumber(value)) end
+                    value = bonus:match("^chance to get a critical .-by (%d+%.?%d*)%%")
+                        or bonus:match("^critical hit chance.-by (%d+%.?%d*)%%")
+                        or bonus:match("^critical strike chance.-by (%d+%.?%d*)%%")
+                    if value then add(values, "crit", tonumber(value)) end
+                    value = bonus:match("^haste.-by (%d+%.?%d*)%%")
+                        or bonus:match("^melee haste.-by (%d+%.?%d*)%%")
+                        or bonus:match("^ranged haste.-by (%d+%.?%d*)%%")
+                        or bonus:match("^spell haste.-by (%d+%.?%d*)%%")
+                    if value then add(values, "haste", tonumber(value)) end
+                    for _, key in ipairs({ "dodge", "parry", "block" }) do
+                        value = bonus:match("^chance to " .. key .. ".-by (%d+%.?%d*)%%")
+                            or bonus:match("^" .. key .. " chance.-by (%d+%.?%d*)%%")
+                        if value then add(values, key, tonumber(value)) end
+                    end
                 end
-                value = text:match("critical.-by (%d+%.?%d*)%%")
-                if value then add(values, "crit", tonumber(value)) end
-                value = text:match("haste.-by (%d+%.?%d*)%%")
-                if value then add(values, "haste", tonumber(value)) end
-                for _, key in ipairs({ "dodge", "parry", "block" }) do
-                    value = text:match(key .. ".-by (%d+%.?%d*)%%")
-                    if value then add(values, key, tonumber(value)) end
-                end
-                value = text:match("defense skill.-by (%d+)")
-                    or text:match("defense.-by (%d+)") or text:match("increased defense %+(%d+)")
+                value = text:match("^equip:%s+increases your defense skill by (%d+)")
+                    or text:match("^equip:%s+increases defense skill by (%d+)")
+                    or text:match("^equip:%s+increases your defense by (%d+)")
+                    or text:match("^equip:%s+increases defense by (%d+)")
+                    or text:match("^equip:%s+increased defense %+(%d+)")
                 if value then add(values, "defense", tonumber(value)) end
-                value = text:match("block value.-by (%d+)") or text:match("blocks? an additional (%d+)")
+                value = text:match("^equip:%s+increases your block value.-by (%d+)")
+                    or text:match("^equip:%s+increases the block value of your shield by (%d+)")
+                    or text:match("^equip:%s+your shield blocks? an additional (%d+)")
                 if value then add(values, "blockValue", tonumber(value)) end
                 value = text:match("restores (%d+) mana per 5 sec")
                 if value then add(values, "mp5", tonumber(value)) end
@@ -524,10 +543,12 @@ local function itemComparison(tooltip, location, candidateScore, weights, recipe
         if secret(equipped) then return "equipped item unavailable" end
         local oldScore = 0
         if equipped then
+            local equippedLocation = itemLocation(equipped)
+            if not equippedLocation or not slotNames[equippedLocation] then return "equipped item data unavailable" end
             local stats = readStats(equipped)
             if not stats then return "equipped stats unavailable" end
             local missing
-            oldScore, missing = scoreItem(stats, weights, itemLocation(equipped), slot)
+            oldScore, missing = scoreItem(stats, weights, equippedLocation, slot)
             if missing then return "equipped item " .. missing end
         end
 
@@ -536,16 +557,18 @@ local function itemComparison(tooltip, location, candidateScore, weights, recipe
             if secret(main) then return "main hand unavailable" end
             if main then
                 local mainLocation = itemLocation(main)
-                if not mainLocation then return "main hand data unavailable" end
+                if not mainLocation or not slotNames[mainLocation] then return "main hand data unavailable" end
                 if mainLocation == "INVTYPE_2HWEAPON" then return "requires a one-hand weapon" end
             end
         elseif location == "INVTYPE_2HWEAPON" then
             local offhand = GetInventoryItemLink("player", 17)
             if secret(offhand) then return "off hand unavailable" end
             if offhand then
+                local offhandLocation = itemLocation(offhand)
+                if not offhandLocation or not slotNames[offhandLocation] then return "off-hand item data unavailable" end
                 local stats = readStats(offhand)
                 if not stats then return "off-hand stats unavailable" end
-                local offScore, missing = scoreItem(stats, weights, itemLocation(offhand), 17)
+                local offScore, missing = scoreItem(stats, weights, offhandLocation, 17)
                 if missing then return "off hand " .. missing end
                 oldScore = oldScore + offScore
             end

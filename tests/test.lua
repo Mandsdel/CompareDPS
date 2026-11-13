@@ -69,6 +69,13 @@ local items = {
     ["item:36"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPenText = 4 },
     ["item:37"] = { loc = "INVTYPE_LEGS", int = 10, spell = 5 },
     ["item:38"] = { loc = "INVTYPE_LEGS", int = 5, spell = 5 },
+    ["item:39"] = { loc = "INVTYPE_2HWEAPON", int = 0, spell = 36 },
+    ["item:40"] = { loc = "INVTYPE_2HWEAPON", int = 0, spell = 32, spirit = 11, sleepResistance = true },
+    ["item:41"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, increasedHit = 2 },
+    ["item:42"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, defensiveEffects = true },
+    ["item:43"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, combatBonuses = true },
+    ["item:44"] = { loc = "", int = 0, spell = 0 },
+    ["item:45"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, defenseBonuses = true },
     ["item:100"] = { loc = "", int = 0, spell = 0, classID = 9 },
     ["item:101"] = { loc = "", int = 0, spell = 0, classID = 9 },
     ["item:102"] = { loc = "", int = 0, spell = 0, classID = 9 },
@@ -96,6 +103,7 @@ function C_Item.GetItemStats(link)
     local item = items[link]
     return item and {
         ITEM_MOD_INTELLECT_SHORT = item.int,
+        ITEM_MOD_SPIRIT_SHORT = item.spirit,
         ITEM_MOD_MANA_REGENERATION_SHORT = item.mp5,
         ITEM_MOD_HIT_SPELL_RATING_SHORT = item.rating,
         ITEM_MOD_STRENGTH_SHORT = item.str,
@@ -132,6 +140,32 @@ function C_TooltipInfo.GetHyperlink(link)
     }
     if item.hit then
         lines[#lines + 1] = { leftText = "Equip: Improves your chance to hit with spells by " .. item.hit .. "%." }
+    end
+    if item.increasedHit then
+        lines[#lines + 1] = { leftText = "Equip: Increases your chance to hit by " .. item.increasedHit .. "%." }
+    end
+    if item.sleepResistance then
+        lines[#lines + 1] = { leftText = "Equip: Reduces the hit chance of Sleep effects against you by 5%." }
+    end
+    if item.defensiveEffects then
+        lines[#lines + 1] = { leftText = "Equip: Reduces the chance of a critical hit against you by 5%." }
+        lines[#lines + 1] = { leftText = "Equip: Reduces your enemy's chance to dodge by 5%." }
+        lines[#lines + 1] = { leftText = "Equip: Reduces your target's haste by 5%." }
+        lines[#lines + 1] = { leftText = "Equip: Reduces damage taken from Shadow spells by up to 10." }
+        lines[#lines + 1] = { leftText = "Equip: Increases damage taken from Shadow spells by up to 10." }
+        lines[#lines + 1] = { leftText = "Equip: Reduces your target's defense by 5." }
+        lines[#lines + 1] = { leftText = "Equip: Reduces your target's spell penetration by 10." }
+        lines[#lines + 1] = { leftText = "Equip: Reduces your target's block value by 10." }
+    end
+    if item.combatBonuses then
+        lines[#lines + 1] = { leftText = "Equip: Improves your chance to get a critical strike by 1%." }
+        lines[#lines + 1] = { leftText = "Equip: Increases your chance to dodge by 1%." }
+        lines[#lines + 1] = { leftText = "Equip: Improves your parry chance by 1%." }
+        lines[#lines + 1] = { leftText = "Equip: Improves your chance to block by 1%." }
+    end
+    if item.defenseBonuses then
+        lines[#lines + 1] = { leftText = "Equip: Increases your defense skill by 5." }
+        lines[#lines + 1] = { leftText = "Equip: Increases the block value of your shield by 10." }
     end
     if item.crit then
         lines[#lines + 1] = { leftText = "Equip: Improves your chance to get a critical hit by " .. item.crit .. "%." }
@@ -283,6 +317,17 @@ assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
 GameTooltip.info = { getterName = "GetBagItem" }
 assert(tooltip("item:3"):find("Two-hand: 32.00 points (+16.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 0.25 and GameTooltip.colors[3][2] == 1)
+equipped[16], equipped[17] = "item:40", nil
+local hydrocane = tooltip("item:39")
+assert(hydrocane:find("Two-hand: 36.00 points (+2.35)", 1, true), hydrocane)
+assert(GameTooltip.colors[3][1] == 0.25 and GameTooltip.colors[3][2] == 1)
+assert(tooltip("item:41"):find("Ring: 24.00 points", 1, true))
+assert(tooltip("item:42"):find("Head: 0.00 points", 1, true))
+equipped[16] = "item:44"
+assert(tooltip("item:39"):find("(equipped item data unavailable)", 1, true))
+equipped[16], equipped[17] = "item:4", "item:44"
+assert(tooltip("item:39"):find("(off-hand item data unavailable)", 1, true))
+equipped[17] = "item:5"
 equipped[16] = "item:3"
 assert(tooltip("item:5"):find("(requires a one-hand weapon)", 1, true))
 equipped[11] = "item:7"
@@ -408,6 +453,9 @@ assert(tooltip("item:17"):find("Off hand: 12.00 points", 1, true))
 GameTooltip.info = nil
 assert(tooltip("item:3"):find("weapon DPS, weapon speed", 1, true))
 assert(namespace.selectProfile("protection"))
+assert(tooltip("item:42"):find("Head: 0.00 points", 1, true))
+assert(tooltip("item:43"):find("Head: 31.00 points", 1, true))
+assert(tooltip("item:45"):find("Head: 10.50 points", 1, true))
 assert(tooltip("item:15"):find("Head: 6.50 points", 1, true))
 assert(tooltip("item:30"):find("Head: 20.50 points", 1, true))
 assert(tooltip("item:31"):find("Head: 10.50 points", 1, true))
