@@ -65,6 +65,7 @@ local statKeys = {
     ITEM_MOD_NATURE_SPELL_POWER_SHORT = "nature",
     ITEM_MOD_HOLY_SPELL_POWER_SHORT = "holy",
     ITEM_MOD_SPELL_HEALING_DONE_SHORT = "heal",
+    ITEM_MOD_SPELL_PENETRATION_SHORT = "spellpen",
     ITEM_MOD_HIT_RATING_SHORT = "hitrating",
     ITEM_MOD_HIT_MELEE_RATING_SHORT = "hitrating",
     ITEM_MOD_HIT_RANGED_RATING_SHORT = "hitrating",
@@ -88,7 +89,7 @@ local statKeys = {
 }
 
 local statOrder = {
-    "str", "agi", "ap", "rap", "fap", "spellpower", "heal",
+    "str", "agi", "ap", "rap", "fap", "spellpower", "heal", "spellpen",
     "shadow", "fire", "frost", "arcane", "nature", "holy", "int", "spirit", "stamina", "mana", "health",
     "hit", "crit", "haste", "hitrating", "critrating", "hasterating", "mp5",
     "hp5", "armor", "defense", "defenserating", "dodge", "dodgerating",
@@ -256,6 +257,8 @@ local function tooltipStats(link)
             value = text:match("^%+?(%d+%.?%d*)%%%s+block$")
             if value then add(values, "block", tonumber(value)) end
             if text:find("equip:", 1, true) then
+                value = text:match("spell penetration.-by (%d+)")
+                if value then add(values, "spellpen", tonumber(value)) end
                 local healing, damage = text:match("healing.-up to (%d+).-damage.-up to (%d+)")
                 if healing and damage then
                     add(values, "heal", tonumber(healing))
@@ -306,6 +309,8 @@ local function tooltipStats(link)
                 value = text:match("restores (%d+) mana per 5 sec")
                 if value then add(values, "mp5", tonumber(value)) end
             end
+            value = text:match("^%+?(%d+)%s+spell penetration$")
+            if value then add(values, "spellpen", tonumber(value)) end
         end
     end
     return values

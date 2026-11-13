@@ -64,6 +64,9 @@ local items = {
     ["item:31"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, defenseText = 5, blockValueText = 10 },
     ["item:32"] = { loc = "INVTYPE_WEAPON", int = 0, spell = 0, classID = 2, subclass = 7, dps = 5, speed = 2 },
     ["item:33"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, blockText = 2 },
+    ["item:34"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4, spellPenAPI = 4 },
+    ["item:35"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4 },
+    ["item:36"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPenText = 4 },
 }
 C_Item = {}
 local equipped = { [5] = "item:10", [11] = "item:2", [12] = "item:1", [16] = "item:4", [17] = "item:5" }
@@ -91,6 +94,7 @@ function C_Item.GetItemStats(link)
         ITEM_MOD_SPELL_HEALING_DONE_SHORT = item.heal,
         ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = item.defenseRating,
         ITEM_MOD_BLOCK_VALUE_SHORT = item.blockValue,
+        ITEM_MOD_SPELL_PENETRATION_SHORT = item.spellPenAPI,
     } or nil
 end
 C_TooltipInfo = {}
@@ -113,6 +117,12 @@ function C_TooltipInfo.GetHyperlink(link)
     if item.dps then lines[#lines + 1] = { leftText = "(" .. item.dps .. " damage per second)", rightText = "Speed " .. item.speed } end
     if item.splitHeal then
         lines[#lines + 1] = { leftText = "Equip: Increases healing done by spells by up to 20 and damage done by spells by up to 10." }
+    end
+    if item.spellPen then
+        lines[#lines + 1] = { leftText = "Equip: Increases your spell penetration by " .. item.spellPen .. "." }
+    end
+    if item.spellPenText then
+        lines[#lines + 1] = { leftText = "+" .. item.spellPenText .. " Spell Penetration" }
     end
     if item.blockPercent then lines[#lines + 1] = { leftText = "Equip: Improves your chance to block by " .. item.blockPercent .. "%." } end
     if item.blockText then lines[#lines + 1] = { leftText = "+" .. item.blockText .. "% Block" } end
@@ -142,6 +152,9 @@ end
 assert(tooltip("item:1"):find("Choose a spec", 1, true))
 assert(namespace.selectProfile("demonology"))
 assert(CompareDPSDB.profile == "demonology")
+assert(tooltip("item:34"):find("Head: 0.40 points", 1, true))
+assert(tooltip("item:35"):find("Head: 0.40 points", 1, true))
+assert(tooltip("item:36"):find("Head: 0.40 points", 1, true))
 assert(tooltip("item:19") == "" and tooltip("item:20") == "")
 assert(tooltip("item:29") == "" and tooltip("item:28") == "")
 assert(tooltip("item:22") == "")
@@ -280,6 +293,15 @@ local expected = {
     DRUID = { "balance", "feral", "feraltank", "restoration" },
     WARLOCK = { "affliction", "demonology", "destruction" },
 }
+for _, spec in ipairs({ "arcane", "fire", "frost" }) do assert(namespace.profiles.MAGE[spec].weights.spellpen == 0.1) end
+for _, spec in ipairs({ "affliction", "demonology", "destruction" }) do assert(namespace.profiles.WARLOCK[spec].weights.spellpen == 0.1) end
+assert(namespace.profiles.PRIEST.shadow.weights.spellpen == 0.1)
+assert(namespace.profiles.DRUID.balance.weights.spellpen == 0.1)
+assert(namespace.profiles.SHAMAN.elemental.weights.spellpen == 0.1)
+for _, spec in ipairs({ "beastmastery", "marksmanship", "survival" }) do assert(namespace.profiles.HUNTER[spec].weights.spellpen == 0.05) end
+assert(namespace.profiles.SHAMAN.enhancement.weights.spellpen == 0.05)
+assert(namespace.profiles.PRIEST.holy.weights.spellpen == nil)
+assert(namespace.profiles.DRUID.restoration.weights.spellpen == nil)
 for class, names in pairs(expected) do
     playerClass = class
     for _, name in ipairs(names) do

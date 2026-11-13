@@ -5,31 +5,31 @@ addon.profiles = {
         beastmastery = { label = "Beast Mastery", weights = {
             hit = 14, crit = 12, dpsRanged = 7, speedRanged = 5, agi = 1.25,
             mp5 = 0.6, rap = 0.5, ap = 0.5, dps2h = 0.5, int = 0.3,
-            stamina = 0.3, dpsMH = 0.3, dpsOH = 0.2, spirit = 0.1, str = 0.1,
+            stamina = 0.3, dpsMH = 0.3, dpsOH = 0.2, spirit = 0.1, str = 0.1, spellpen = 0.05,
         } },
         marksmanship = { label = "Marksmanship", weights = {
             hit = 14, crit = 13, dpsRanged = 7.5, speedRanged = 6, agi = 1.25,
             mp5 = 0.6, rap = 0.5, ap = 0.5, dps2h = 0.5, int = 0.3,
-            dpsMH = 0.3, stamina = 0.25, dpsOH = 0.2, spirit = 0.1, str = 0.1,
+            dpsMH = 0.3, stamina = 0.25, dpsOH = 0.2, spirit = 0.1, str = 0.1, spellpen = 0.05,
         } },
         survival = { label = "Survival", weights = {
             hit = 14, crit = 12, dpsRanged = 7, speedRanged = 4, agi = 1.25,
             mp5 = 0.6, dps2h = 0.6, rap = 0.5, ap = 0.5, dpsMH = 0.35,
-            int = 0.3, stamina = 0.3, dpsOH = 0.2, str = 0.15, spirit = 0.1,
+            int = 0.3, stamina = 0.3, dpsOH = 0.2, str = 0.15, spirit = 0.1, spellpen = 0.05,
         } },
     },
     MAGE = {
         arcane = { label = "Arcane", weights = {
             hit = 12, crit = 9, dpsRanged = 2, mp5 = 1.5, spellpower = 1,
-            arcane = 0.9, frost = 0.5, int = 0.85, mana = 0.03, stamina = 0.2, spirit = 0.1,
+            arcane = 0.9, frost = 0.5, int = 0.85, mana = 0.03, stamina = 0.2, spirit = 0.1, spellpen = 0.1,
         } },
         fire = { label = "Fire", weights = {
             hit = 13, crit = 11, dpsRanged = 2, spellpower = 1, fire = 0.95,
-            mp5 = 0.8, int = 0.35, stamina = 0.2, spirit = 0.1,
+            mp5 = 0.8, int = 0.35, stamina = 0.2, spirit = 0.1, spellpen = 0.1,
         } },
         frost = { label = "Frost", weights = {
             hit = 12, crit = 10, dpsRanged = 2, spellpower = 1, frost = 0.95,
-            mp5 = 0.8, int = 0.35, stamina = 0.25, spirit = 0.1,
+            mp5 = 0.8, int = 0.35, stamina = 0.25, spirit = 0.1, spellpen = 0.1,
         } },
     },
     ROGUE = {
@@ -64,12 +64,12 @@ addon.profiles = {
     SHAMAN = {
         elemental = { label = "Elemental", weights = {
             mp5 = 1.5, spellpower = 1, nature = 0.9, fire = 0.5, int = 0.45,
-            stamina = 0.25, spirit = 0.1, hit = 12, crit = 10, armor = 0.002, dpsMH = 0.4,
+            stamina = 0.25, spirit = 0.1, hit = 12, crit = 10, armor = 0.002, dpsMH = 0.4, spellpen = 0.1,
         } },
         enhancement = { label = "Enhancement", weights = {
             str = 1, agi = 0.8, ap = 0.5, hit = 14, crit = 14, int = 0.25,
             spellpower = 0.2, nature = 0.15, stamina = 0.35, dps2h = 6.5, dpsMH = 4,
-            speed2h = 10, armor = 0.003,
+            speed2h = 10, armor = 0.003, spellpen = 0.05,
         } },
         restoration = { label = "Restoration (Healing)", weights = {
             heal = 1, spellpower = 1, mp5 = 3, int = 0.5, spirit = 0.3,
@@ -104,13 +104,13 @@ addon.profiles = {
         } },
         shadow = { label = "Shadow", weights = {
             hit = 12, crit = 8, dpsRanged = 2.5, spellpower = 1, shadow = 1,
-            mp5 = 1, int = 0.35, spirit = 0.35, stamina = 0.3,
+            mp5 = 1, int = 0.35, spirit = 0.35, stamina = 0.3, spellpen = 0.1,
         } },
     },
     DRUID = {
         balance = { label = "Balance", weights = {
             hit = 12, crit = 9, mp5 = 1.5, spellpower = 1, arcane = 0.7,
-            nature = 0.7, int = 0.4, spirit = 0.25, stamina = 0.25,
+            nature = 0.7, int = 0.4, spirit = 0.25, stamina = 0.25, spellpen = 0.1,
         } },
         feral = { label = "Feral (DPS)", weights = {
             hit = 14, crit = 12, agi = 1, str = 1, ap = 0.5, fap = 0.5,
@@ -130,21 +130,21 @@ addon.profiles = {
             label = "Affliction",
             weights = {
                 spellpower = 1, shadow = 0.95, hit = 13, crit = 6,
-                mp5 = 1.3, int = 0.4, spirit = 0.25, stamina = 0.35, dpsRanged = 1.5,
+                mp5 = 1.3, int = 0.4, spirit = 0.25, stamina = 0.35, dpsRanged = 1.5, spellpen = 0.1,
             },
         },
         demonology = {
             label = "Demonology",
             weights = {
                 spellpower = 1, shadow = 0.8, fire = 0.35, hit = 12,
-                crit = 8, mp5 = 1, int = 0.4, stamina = 0.5, spirit = 0.15, dpsRanged = 1.2,
+                crit = 8, mp5 = 1, int = 0.4, stamina = 0.5, spirit = 0.15, dpsRanged = 1.2, spellpen = 0.1,
             },
         },
         destruction = {
             label = "Destruction",
             weights = {
                 spellpower = 1, fire = 0.9, shadow = 0.65, hit = 13,
-                crit = 11, mp5 = 0.8, int = 0.35, stamina = 0.2, spirit = 0.1, dpsRanged = 2,
+                crit = 11, mp5 = 0.8, int = 0.35, stamina = 0.2, spirit = 0.1, dpsRanged = 2, spellpen = 0.1,
             },
         },
     },
