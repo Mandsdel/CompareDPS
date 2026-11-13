@@ -67,13 +67,13 @@ local statKeys = {
     ITEM_MOD_SPELL_HEALING_DONE_SHORT = "heal",
     ITEM_MOD_SPELL_PENETRATION_SHORT = "spellpen",
     ITEM_MOD_HIT_RATING_SHORT = "hitrating",
-    ITEM_MOD_HIT_MELEE_RATING_SHORT = "hitrating",
-    ITEM_MOD_HIT_RANGED_RATING_SHORT = "hitrating",
-    ITEM_MOD_HIT_SPELL_RATING_SHORT = "hitrating",
-    ITEM_MOD_CRIT_SPELL_RATING_SHORT = "critrating",
+    ITEM_MOD_HIT_MELEE_RATING_SHORT = "hitMeleerating",
+    ITEM_MOD_HIT_RANGED_RATING_SHORT = "hitRangedrating",
+    ITEM_MOD_HIT_SPELL_RATING_SHORT = "hitSpellrating",
+    ITEM_MOD_CRIT_SPELL_RATING_SHORT = "critSpellrating",
     ITEM_MOD_CRIT_RATING_SHORT = "critrating",
-    ITEM_MOD_CRIT_MELEE_RATING_SHORT = "critrating",
-    ITEM_MOD_CRIT_RANGED_RATING_SHORT = "critrating",
+    ITEM_MOD_CRIT_MELEE_RATING_SHORT = "critMeleerating",
+    ITEM_MOD_CRIT_RANGED_RATING_SHORT = "critRangedrating",
     ITEM_MOD_HASTE_SPELL_RATING_SHORT = "hasterating",
     ITEM_MOD_HASTE_RATING_SHORT = "hasterating",
     ITEM_MOD_MANA_REGENERATION_SHORT = "mp5",
@@ -95,6 +95,30 @@ local statOrder = {
     "hp5", "armor", "defense", "defenserating", "dodge", "dodgerating",
     "parry", "parryrating", "block", "blockrating", "blockValue",
 }
+local weaponWeightOrder = {
+    "dpsMH", "dpsOH", "dps2h", "dpsRanged",
+    "speedMH", "speedOH", "speed2h", "speedRanged",
+}
+
+local function combatDomain()
+    local _, class = UnitClass("player")
+    if class == "HUNTER" then return "Ranged" end
+    if class == "WARRIOR" or class == "ROGUE" then return "Melee" end
+    if class == "SHAMAN" and CompareDPSDB.profile == "enhancement" then return "Melee" end
+    if class == "PALADIN" and CompareDPSDB.profile ~= "holy" then return "Melee" end
+    if class == "DRUID" and (CompareDPSDB.profile == "feral" or CompareDPSDB.profile == "feraltank") then
+        return "Melee"
+    end
+    return "Spell"
+end
+
+local function bonusDomain(text)
+    if text:find("spell", 1, true) then return "Spell" end
+    if text:find("ranged", 1, true) then return "Ranged" end
+    if text:find("melee", 1, true) then return "Melee" end
+    return ""
+end
+
 local function secret(value)
     return type(issecretvalue) == "function" and issecretvalue(value)
 end
@@ -347,7 +371,10 @@ local function tooltipStats(link)
                 elseif beneficial and text:find("damage and healing done", 1, true)
                     and text:find("spell", 1, true) then
                     value = text:match("up to (%d+)")
-                    if value then add(values, "spellpower", tonumber(value)) end
+                    if value then
+                        add(values, "spellpower", tonumber(value))
+                        add(values, "heal", tonumber(value))
+                    end
                 elseif beneficial and text:find("damage done by shadow spells", 1, true) then
                     value = text:match("up to (%d+)")
                     if value then add(values, "shadow", tonumber(value)) end
@@ -374,11 +401,11 @@ local function tooltipStats(link)
                     or text:match("^equip:%s+increases your (.+)$")
                 if bonus then
                     value = bonus:match("^chance to hit.-by (%d+%.?%d*)%%")
-                    if value then add(values, "hit", tonumber(value)) end
+                    if value then add(values, "hit" .. bonusDomain(bonus), tonumber(value)) end
                     value = bonus:match("^chance to get a critical .-by (%d+%.?%d*)%%")
                         or bonus:match("^critical hit chance.-by (%d+%.?%d*)%%")
                         or bonus:match("^critical strike chance.-by (%d+%.?%d*)%%")
-                    if value then add(values, "crit", tonumber(value)) end
+                    if value then add(values, "crit" .. bonusDomain(bonus), tonumber(value)) end
                     value = bonus:match("^haste.-by (%d+%.?%d*)%%")
                         or bonus:match("^melee haste.-by (%d+%.?%d*)%%")
                         or bonus:match("^ranged haste.-by (%d+%.?%d*)%%")
@@ -429,13 +456,26 @@ local function readStats(link)
             stats[key] = value
         end
     end
+    -- Generic API ratings and domain-specific ratings can report the same bonus.
+    local domain = combatDomain()
+    for _, key in ipairs({ "hit", "crit" }) do
+        local specific = key .. domain
+        local percent = (stats[key] or 0) + (stats[specific] or 0)
+        if stats[key] ~= nil or stats[specific] ~= nil then
+            stats[key] = percent
+        else
+            local rating = stats[key .. "rating"] or stats[specific .. "rating"]
+            if rating then stats[key] = rating / (key == "hit" and 10 or 14) end
+        end
+        stats[key .. "rating"] = nil
+    end
     -- A percentage on the tooltip and an API rating can describe the same stat.
-    for _, key in ipairs({ "hit", "crit", "haste", "dodge", "parry", "block" }) do
+    for _, key in ipairs({ "haste", "dodge", "parry", "block" }) do
         if stats[key] ~= nil then
             stats[key .. "rating"] = nil
         end
     end
-    for key, perPercent in pairs({ hit = 10, crit = 14, dodge = 12, parry = 15 }) do
+    for key, perPercent in pairs({ dodge = 12, parry = 15 }) do
         local ratingKey = key .. "rating"
         if stats[ratingKey] ~= nil then
             stats[key] = stats[ratingKey] / perPercent
@@ -467,14 +507,14 @@ local function scoreItem(stats, weights, location, slot)
         end
     end
     local dpsKey, speedKey = weaponKeys(location, slot)
-    if dpsKey and weights[dpsKey] then
+    if dpsKey and weights[dpsKey] and weights[dpsKey] ~= 0 then
         if stats.weaponDps then
             score = score + stats.weaponDps * weights[dpsKey]
         else
             unavailable[#unavailable + 1] = "weapon DPS"
         end
     end
-    if speedKey and weights[speedKey] then
+    if speedKey and weights[speedKey] and weights[speedKey] ~= 0 then
         if stats.weaponSpeed then
             score = score + (stats.weaponSpeed - 2) * weights[speedKey]
         else
@@ -713,6 +753,9 @@ local function command(input)
         for _, name in ipairs(statOrder) do
             local weight = weights[name]
             message(name .. ": " .. tostring(weight or 0))
+        end
+        for _, name in ipairs(weaponWeightOrder) do
+            message(name .. ": " .. tostring(weights[name] or 0))
         end
     else
         message("/compare opens options | /comparedps spec <name> | list")

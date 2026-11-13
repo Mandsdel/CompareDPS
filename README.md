@@ -53,6 +53,9 @@ Each spec starts with approximate default stat weights. A stat with no weight co
 zero; unlisted stats in the options view have weight zero. Values are relative
 gear points per stat unit, with percentage stats weighted per 1 percentage
 point and weapon speed per second. Negative weights are shown as-is.
+For healing profiles, the spell power weight applies to spell damage and the
+healing power weight applies separately to healing. A combined damage-and-healing
+bonus contributes to both; a split bonus contributes its respective amounts.
 The score only reflects stats CompareDPS can read. By default, spell penetration
 is weighted at **0.1 per point** for Mage, Warlock, Shadow Priest, Balance
 Druid and Elemental Shaman profiles; it is **0.05 per point** for Hunter and
@@ -80,6 +83,12 @@ need to load before it can be scored. Verify upgrades in the game.
 
 Percentage bonuses are recognized only for supported tooltip wording about the
 player's own stats; effects such as resistance to Sleep are not hit bonuses.
+The hit and critical weights use the profile's primary combat type: ranged for
+Hunters, melee for Warriors, Rogues, Enhancement Shamans, Protection and
+Retribution Paladins, and Feral Druids, and spells for the remaining profiles.
+Bonuses limited to another type contribute zero, even for hybrid specs. Generic
+bonuses apply to the primary type. When both generic and type-specific API
+ratings are reported, the generic value takes precedence to avoid double counting.
 When only an API rating is available, the current estimates use 10 hit, 14
 critical strike, 12 dodge or 15 parry rating per percentage point. These fixed
 conversions are approximations, not verified level-dependent Forever values.
