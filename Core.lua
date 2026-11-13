@@ -188,6 +188,17 @@ local function getLink(tooltip, data)
             return link
         end
     end
+    if not secret(info) and type(info) == "table" and not secret(info.getterName)
+        and info.getterName == "GetMerchantItem" and not secret(info.getterArgs)
+        and type(info.getterArgs) == "table" and type(GetMerchantItemLink) == "function" then
+        local index = info.getterArgs[1]
+        if not secret(index) and type(index) == "number" then
+            link = GetMerchantItemLink(index)
+            if not secret(link) and type(link) == "string" and link:find("item:", 1, true) then
+                return link
+            end
+        end
+    end
     if type(tooltip.GetItem) == "function" then
         local _, itemLink = tooltip:GetItem()
         if not secret(itemLink) and type(itemLink) == "string" and itemLink:find("item:", 1, true) then
@@ -564,9 +575,17 @@ local function compare(tooltip, data)
     if not link then
         local id = type(data) == "table" and data.id
         if not secret(id) and type(id) == "number" and id > 0 then
-            tooltip:AddLine("CompareDPS: item link unavailable", 1, 0.7, 0.2)
+            local candidate = "item:" .. id
+            local _, _, _, _, _, itemClass = C_Item.GetItemInfoInstant(candidate)
+            if not secret(itemClass) and itemClass == 9 then
+                link = candidate
+            else
+                tooltip:AddLine("CompareDPS: item link unavailable", 1, 0.7, 0.2)
+                return
+            end
+        else
+            return
         end
-        return
     end
     local _, _, _, _, _, itemClass = C_Item.GetItemInfoInstant(link)
     local recipe = not secret(itemClass) and itemClass == 9

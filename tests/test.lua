@@ -77,6 +77,7 @@ local items = {
 C_Item = {}
 local equipped = { [5] = "item:10", [11] = "item:2", [12] = "item:1", [16] = "item:4", [17] = "item:5" }
 function GetInventoryItemLink(_, slot) return equipped[slot] end
+function GetMerchantItemLink(index) if index == 1 then return "item:100" end end
 ItemLocation = {}
 function ItemLocation:CreateFromEquipmentSlot(slot) return slot end
 function C_Item.GetItemGUID(slot) return "guid:" .. slot end
@@ -189,6 +190,14 @@ assert(tooltip("item:101"):find("Chest: 9.00 points (+0.00)", 1, true))
 assert(tooltip("item:102"):find("crafted item unavailable", 1, true))
 assert(tooltip("item:103") == "")
 assert(tooltip("item:104"):find("crafted item data unavailable", 1, true))
+GameTooltip.info = { getterName = "GetMerchantItem", getterArgs = { 1 } }
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, {})
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+GameTooltip.info = nil
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { id = 100 })
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
 ItemRefTooltip.lines, ItemRefTooltip.colors = {}, {}
 TooltipDataProcessor.callback(ItemRefTooltip, {
     hyperlink = "item:100",
