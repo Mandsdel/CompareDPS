@@ -496,6 +496,14 @@ local function weaponSlot(tooltip, data, link)
     if link == off and link ~= main then return 17 end
 end
 
+local comparedGetters = {
+    GetBagItem = true, GetQuestItem = true, GetQuestLogItem = true, GetHyperlink = true,
+    GetItemByID = true, GetLootItem = true, GetLootRollItem = true, GetMerchantItem = true,
+    GetBuybackItem = true, GetRecipeResultItem = true, GetRecipeResultItemForOrder = true,
+    GetInboxItem = true, GetSendMailItem = true, GetTradePlayerItem = true,
+    GetTradeTargetItem = true, GetGuildBankItem = true, GetItemKey = true,
+}
+
 local function itemComparison(tooltip, location, candidateScore, weights, recipe)
     if not recipe and tooltip ~= ItemRefTooltip then
         if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
@@ -503,11 +511,7 @@ local function itemComparison(tooltip, location, candidateScore, weights, recipe
         if secret(info) or type(info) ~= "table" or secret(info.getterName) then
             return nil
         end
-        if info.getterName ~= "GetBagItem" and info.getterName ~= "GetQuestItem"
-            and info.getterName ~= "GetQuestLogItem" and info.getterName ~= "GetHyperlink"
-            and info.getterName ~= "GetItemByID" and info.getterName ~= "GetLootRollItem"
-            and info.getterName ~= "GetMerchantItem" and info.getterName ~= "GetRecipeResultItem"
-            and info.getterName ~= "GetRecipeResultItemForOrder" then
+        if not comparedGetters[info.getterName] then
             return nil
         end
     end

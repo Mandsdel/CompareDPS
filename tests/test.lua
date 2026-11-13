@@ -256,7 +256,9 @@ equipped[5] = "item:11"
 assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
 equipped[7] = "item:38"
-for _, getter in ipairs({ "GetRecipeResultItem", "GetRecipeResultItemForOrder" }) do
+for _, getter in ipairs({ "GetRecipeResultItem", "GetRecipeResultItemForOrder", "GetLootItem",
+    "GetInboxItem", "GetSendMailItem", "GetTradePlayerItem", "GetTradeTargetItem",
+    "GetBuybackItem", "GetGuildBankItem", "GetItemKey" }) do
     GameTooltip.info = { getterName = getter, getterArgs = { 123 } }
     local crafted = tooltip("item:37")
     assert(crafted:find("Legs: 9.00 points (+2.00)", 1, true), crafted)

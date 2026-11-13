@@ -35,8 +35,9 @@ weapon types your class cannot use are not scored. You can also use:
 /comparedps list
 ```
 
-Item tooltips show a score. Bag, vendor, profession, quest, loot and item-link
-comparisons also show the difference from equipped gear; positive is higher, negative is lower.
+Item tooltips show a score. Bag, vendor, buyback, profession, quest, loot,
+mail, trade, guild bank, auction house and item-link tooltips also show the
+difference from equipped gear; positive is higher, negative is lower.
 Rings and trinkets are compared against each equipped slot. Weapon scores
 account for weapon DPS and speed where the selected profile has weights.
 
