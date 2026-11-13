@@ -141,6 +141,12 @@ local namespace = {}
 assert(loadfile("Profiles.lua"))("CompareDPS", namespace)
 assert(loadfile("Core.lua"))("CompareDPS", namespace)
 frame.handler(frame, "ADDON_LOADED", "CompareDPS")
+assert(SLASH_COMPAREDPS1 == "/comparedps" and SLASH_COMPAREDPS2 == "/compare")
+local toggles = 0
+namespace.toggleOptions = function() toggles = toggles + 1 end
+SlashCmdList.COMPAREDPS("")
+SlashCmdList.COMPAREDPS("   ")
+assert(toggles == 2)
 
 local function tooltip(link)
     GameTooltip.lines = {}

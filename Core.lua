@@ -562,7 +562,9 @@ end
 
 local function command(input)
     local action, key = input:lower():match("^%s*(%S+)%s*(%S*)%s*$")
-    if action == "spec" then
+    if not action then
+        if namespace.toggleOptions then namespace.toggleOptions() end
+    elseif action == "spec" then
         local profiles = classProfiles()
         if not profiles or not profiles[key] then
             message("Unknown spec for your class. Available: " .. availableProfiles() .. ".")
@@ -582,7 +584,7 @@ local function command(input)
             message(name .. ": " .. tostring(weight or 0))
         end
     else
-        message("/comparedps spec <name> | list")
+        message("/compare opens options | /comparedps spec <name> | list")
         message("Available specs: " .. availableProfiles())
         message("Presets are relative scores, not DPS. See the README for limitations.")
     end
@@ -598,6 +600,7 @@ addon:SetScript("OnEvent", function(_, event, name)
     if name ~= "CompareDPS" then return end
     if type(CompareDPSDB) ~= "table" then CompareDPSDB = {} end
     SLASH_COMPAREDPS1 = "/comparedps"
+    SLASH_COMPAREDPS2 = "/compare"
     SlashCmdList.COMPAREDPS = command
     if not C_Item or type(C_Item.GetItemInfoInstant) ~= "function"
         or type(C_Item.GetItemStats) ~= "function"
