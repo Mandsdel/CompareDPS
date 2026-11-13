@@ -56,7 +56,7 @@ weighted value **among the stats counted**.
 These are relative points, not actual DPS. The first time you use the addon,
 select a spec; no preset is automatically chosen.
 
-When hovering over an item in your bags, quest rewards or the Dungeon Journal,
+When hovering over an item in your bags, loot rolls, quest rewards or the Dungeon Journal,
 or opening a linked item, the number in parentheses is its score difference
 from the equipped item. Positive means a higher score,
 negative a lower score. Rings and trinkets show differences for both equipped

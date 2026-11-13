@@ -425,7 +425,7 @@ local function itemComparison(tooltip, location, candidateScore, weights)
         end
         if info.getterName ~= "GetBagItem" and info.getterName ~= "GetQuestItem"
             and info.getterName ~= "GetQuestLogItem" and info.getterName ~= "GetHyperlink"
-            and info.getterName ~= "GetItemByID" then
+            and info.getterName ~= "GetItemByID" and info.getterName ~= "GetLootRollItem" then
             return nil
         end
     end
