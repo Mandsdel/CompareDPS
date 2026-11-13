@@ -194,8 +194,11 @@ local journalItem = table.concat(GameTooltip.lines, "\n")
 assert(journalItem:find("Chest: 9.00 points (-3.00)", 1, true), journalItem)
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
 GameTooltip.info.compareItem = false
-assert(tooltip("item:10"):find("Chest: 9.00 points", 1, true))
-assert(not table.concat(GameTooltip.lines, "\n"):find("(-3.00)", 1, true))
+assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
+GameTooltip.info.compareItem = nil
+assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
+GameTooltip.info = { getterName = "GetItemByID", getterArgs = { 10 } }
+assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
 GameTooltip.info = { getterName = "GetBagItem" }
 assert(tooltip("item:3"):find("Two-hand: 32.00 points (+16.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 0.25 and GameTooltip.colors[3][2] == 1)

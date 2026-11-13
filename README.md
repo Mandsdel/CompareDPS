@@ -63,6 +63,8 @@ negative a lower score. Rings and trinkets show differences for both equipped
 slots; an empty slot has a score of zero. Equipped-item tooltips do not show
 a difference, including the equipped-item tooltip beside a linked item.
 Other tooltip sources display the item score without a difference.
+Ordinary item-link and item-ID hovers also show differences, including loot
+previews from third-party journal addons; no Blizzard journal flag is required.
 Gains are green, losses are red, and equal scores and equipped items are white.
 For rings and trinkets, each slot's difference is colored independently.
 

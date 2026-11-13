@@ -423,10 +423,9 @@ local function itemComparison(tooltip, location, candidateScore, weights)
         if secret(info) or type(info) ~= "table" or secret(info.getterName) then
             return nil
         end
-        local journalItem = info.getterName == "GetHyperlink" and not secret(info.compareItem)
-            and info.compareItem == true
         if info.getterName ~= "GetBagItem" and info.getterName ~= "GetQuestItem"
-            and info.getterName ~= "GetQuestLogItem" and not journalItem then
+            and info.getterName ~= "GetQuestLogItem" and info.getterName ~= "GetHyperlink"
+            and info.getterName ~= "GetItemByID" then
             return nil
         end
     end
