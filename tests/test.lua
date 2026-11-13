@@ -253,6 +253,9 @@ assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 1 and GameT
 equipped[5] = "item:11"
 assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
+GameTooltip.info = { getterName = "GetMerchantItem", getterArgs = { 1 } }
+assert(tooltip("item:10"):find("Chest: 9.00 points (-3.00)", 1, true))
+assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 0.25)
 GameTooltip.info = { getterName = "GetHyperlink", getterArgs = { "item:10" }, compareItem = true }
 GameTooltip.lines, GameTooltip.colors = {}, {}
 TooltipDataProcessor.callback(GameTooltip, {})
