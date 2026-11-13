@@ -362,4 +362,33 @@ assert(feral:find("Head: 25.00 points", 1, true), feral)
 assert(namespace.selectProfile("feraltank"))
 local bear = tooltip("item:12")
 assert(bear:find("Head: 19.45 points", 1, true), bear)
+playerClass = "WARLOCK"
+assert(namespace.selectProfile("demonology"))
+local customized = {}
+for key, value in pairs(namespace.activeWeights()) do customized[key] = value end
+customized.spellpower = 2.5
+assert(namespace.saveWeights(customized))
+assert(tooltip("item:1"):find("Ring: 33.00 points", 1, true))
+assert(namespace.profiles.WARLOCK.demonology.weights.spellpower == 1)
+customized.spellpower = 99
+assert(namespace.activeWeights().spellpower == 2.5)
+for _, invalid in ipairs({ "abc", math.huge, -math.huge, 0 / 0 }) do
+    customized.spellpower = invalid
+    local saved, errorMessage = namespace.saveWeights(customized)
+    assert(not saved and errorMessage and namespace.activeWeights().spellpower == 2.5)
+end
+customized.spellpower = nil
+assert(not namespace.saveWeights(customized))
+customized.spellpower = 2.5
+customized.unknown = 1
+assert(not namespace.saveWeights(customized))
+assert(namespace.selectProfile("affliction"))
+assert(namespace.activeWeights().spellpower == 1)
+assert(namespace.selectProfile("demonology"))
+assert(namespace.activeWeights().spellpower == 2.5)
+frame.handler(frame, "ADDON_LOADED", "CompareDPS")
+assert(namespace.activeWeights().spellpower == 2.5)
+assert(namespace.resetWeights())
+assert(namespace.activeWeights().spellpower == 1)
+assert(tooltip("item:1"):find("Ring: 18.00 points", 1, true))
 print("CompareDPS checks passed")

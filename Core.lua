@@ -114,7 +114,8 @@ local function activeWeights()
     local profiles = classProfiles()
     local profile = profiles and profiles[CompareDPSDB.profile]
     if profile then
-        return profile.weights, profile.label
+        local custom = CompareDPSDB.customWeights and CompareDPSDB.customWeights[CompareDPSDB.profile]
+        return custom or profile.weights, profile.label
     end
 end
 
@@ -130,6 +131,40 @@ end
 
 namespace.classProfiles = classProfiles
 namespace.activeWeights = activeWeights
+
+function namespace.saveWeights(values)
+    local profiles = classProfiles()
+    local profile = profiles and profiles[CompareDPSDB.profile]
+    if not profile then return false, "No specialization selected." end
+    if type(values) ~= "table" then return false, "Weights must be a table." end
+    local saved = {}
+    for key in pairs(profile.weights) do
+        local value = values[key]
+        if type(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
+            return false, "Enter a finite number for " .. key .. "."
+        end
+        saved[key] = value
+    end
+    for key in pairs(values) do
+        if profile.weights[key] == nil then return false, "Unsupported weight: " .. tostring(key) .. "." end
+    end
+    CompareDPSDB.customWeights = CompareDPSDB.customWeights or {}
+    CompareDPSDB.customWeights[CompareDPSDB.profile] = saved
+    if namespace.refreshOptions then namespace.refreshOptions() end
+    return true
+end
+
+function namespace.resetWeights()
+    local profiles = classProfiles()
+    if not profiles or not profiles[CompareDPSDB.profile] then
+        return false, "No specialization selected."
+    end
+    if CompareDPSDB.customWeights then
+        CompareDPSDB.customWeights[CompareDPSDB.profile] = nil
+    end
+    if namespace.refreshOptions then namespace.refreshOptions() end
+    return true
+end
 
 function namespace.selectProfile(key)
     local profiles = classProfiles()

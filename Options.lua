@@ -2,6 +2,7 @@ local _, addon = ...
 
 local window, optionsPanel, minimapButton
 local views = {}
+local editingView, editingProfile
 
 local statLabels = {
     str = "Strength", agi = "Agility", ap = "Attack power",
@@ -27,9 +28,18 @@ local function closeMenu()
     for _, view in ipairs(views) do view.menu:Hide() end
 end
 
+local function cancelEditing()
+    if editingView then
+        for _, row in ipairs(editingView.rows) do row.input:ClearFocus() end
+    end
+    editingView, editingProfile = nil, nil
+end
+
 function addon.refreshOptions()
     local profiles = addon.classProfiles()
     local profile = profiles and profiles[CompareDPSDB.profile]
+    local weights = addon.activeWeights()
+    if editingProfile and editingProfile ~= profile then cancelEditing() end
     local keys = {}
     if profile then
         for key in pairs(profile.weights) do keys[#keys + 1] = key end
@@ -39,6 +49,7 @@ function addon.refreshOptions()
     end
     local rowCount = math.ceil(#keys / 2)
     for _, view in ipairs(views) do
+        local editing = editingView == view
         view.dropdown:SetText(profile and (profile.label .. "  v")
             or (profiles and "Select specialization  v" or "No supported specializations"))
         view.heading:SetText(profile and (profile.label .. " stat weights")
@@ -57,28 +68,71 @@ function addon.refreshOptions()
                 row.label:SetWidth(210)
                 row.value:SetJustifyH("RIGHT")
                 row.value:SetWidth(48)
+                row.input = CreateFrame("EditBox", nil, view.parent, "InputBoxTemplate")
+                row.input:SetSize(60, 20)
+                row.input:SetAutoFocus(false)
+                row.input:SetScript("OnEscapePressed", function()
+                    cancelEditing()
+                    addon.refreshOptions()
+                end)
                 view.rows[i] = row
             end
             local column = i > rowCount and 1 or 0
             local index = column == 1 and (i - rowCount) or i
             row.label:ClearAllPoints()
             row.value:ClearAllPoints()
+            row.input:ClearAllPoints()
             row.label:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20 + column * 280, -164 - (index - 1) * 20)
             row.value:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 230 + column * 280, -164 - (index - 1) * 20)
+            row.input:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 224 + column * 280, -160 - (index - 1) * 20)
+            row.key = key
             row.label:SetText(statLabels[key] or key)
-            row.value:SetText(tostring(profile.weights[key]))
+            row.value:SetText(tostring(weights[key]))
             row.label:Show()
-            row.value:Show()
+            if editing then
+                if not row.input:IsShown() then row.input:SetText(tostring(weights[key])) end
+                row.input:Show()
+                row.value:Hide()
+            else
+                row.input:Hide()
+                row.value:Show()
+            end
         end
         for i = #keys + 1, #view.rows do
             view.rows[i].label:Hide()
             view.rows[i].value:Hide()
+            view.rows[i].input:Hide()
         end
+        local buttonY = -math.max(220, 184 + rowCount * 20)
+        for i, button in ipairs({ view.edit, view.save, view.cancel, view.reset }) do
+            button:ClearAllPoints()
+            button:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20 + (i - 1) * 132, buttonY)
+        end
+        if profile then
+            view.reset:Show()
+            if editing then
+                view.edit:Hide()
+                view.save:Show()
+                view.cancel:Show()
+            else
+                view.edit:Show()
+                view.save:Hide()
+                view.cancel:Hide()
+            end
+        else
+            view.edit:Hide()
+            view.save:Hide()
+            view.cancel:Hide()
+            view.reset:Hide()
+        end
+        view.status:SetText(editing and "Editing: changes apply only after Save." or "")
+        view.status:ClearAllPoints()
+        view.status:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20, buttonY - 32)
         view.note:ClearAllPoints()
-        view.note:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20, -math.max(220, 184 + rowCount * 20))
+        view.note:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20, buttonY - 56)
         view.note:SetPoint("RIGHT", view.parent, "RIGHT", -20, 0)
     end
-    if window then window:SetHeight(math.max(320, 264 + rowCount * 20)) end
+    if window then window:SetHeight(math.max(376, 320 + rowCount * 20)) end
 end
 
 local function makeContent(parent)
@@ -147,10 +201,62 @@ local function makeContent(parent)
 
     local note = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     note:SetJustifyH("LEFT")
-    note:SetText("Unlisted stats have weight 0. Weights are read-only presets for the selected specialization.\nClass detected automatically; specialization selected manually. Scores are approximate, not simulated DPS, and do not account for all item effects.")
+    note:SetText("Unlisted stats have weight 0. Custom weights are saved per character and specialization.\nClosing this view or switching specialization discards unsaved edits. Scores are approximate, not simulated DPS, and do not account for all item effects.")
     view.note = note
+    view.status = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    view.status:SetJustifyH("LEFT")
+    local function button(text, handler)
+        local control = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        control:SetSize(124, 24)
+        control:SetText(text)
+        control:SetScript("OnClick", handler)
+        return control
+    end
+    view.edit = button("Edit", function()
+        closeMenu()
+        cancelEditing()
+        addon.refreshOptions()
+        editingView = view
+        local profiles = addon.classProfiles()
+        editingProfile = profiles and profiles[CompareDPSDB.profile]
+        addon.refreshOptions()
+    end)
+    view.save = button("Save", function()
+        local values = {}
+        for _, row in ipairs(view.rows) do
+            if row.input:IsShown() then
+                local value = tonumber(row.input:GetText())
+                if not value or value ~= value or value == math.huge or value == -math.huge then
+                    view.status:SetText("Invalid weight for " .. (statLabels[row.key] or row.key) .. ": enter a finite number.")
+                    row.input:SetFocus()
+                    return
+                end
+                values[row.key] = value
+            end
+        end
+        local saved, errorMessage = addon.saveWeights(values)
+        if not saved then view.status:SetText(errorMessage); return end
+        cancelEditing()
+        addon.refreshOptions()
+    end)
+    view.cancel = button("Cancel", function()
+        cancelEditing()
+        addon.refreshOptions()
+    end)
+    view.reset = button("Reset to Default", function()
+        local reset, errorMessage = addon.resetWeights()
+        if not reset then view.status:SetText(errorMessage); return end
+        cancelEditing()
+        addon.refreshOptions()
+    end)
     parent:SetScript("OnShow", addon.refreshOptions)
-    parent:SetScript("OnHide", closeMenu)
+    parent:SetScript("OnHide", function()
+        closeMenu()
+        if editingView == view then
+            cancelEditing()
+            addon.refreshOptions()
+        end
+    end)
 end
 
 local function makeWindow()
