@@ -211,6 +211,35 @@ local function itemLocation(link)
     return location
 end
 
+local function recipeResult(link, data)
+    if secret(data) or type(data) ~= "table" or secret(data.lines) or type(data.lines) ~= "table" then
+        data = C_TooltipInfo.GetHyperlink(link)
+    end
+    if secret(data) or type(data) ~= "table" or secret(data.lines) or type(data.lines) ~= "table" then
+        return nil
+    end
+    local lineTypes = Enum.TooltipDataLineType
+    if not lineTypes or not lineTypes.NestedBlock then return nil end
+    local function nestedItem(tooltipData, allowSpell)
+        if secret(tooltipData) or type(tooltipData) ~= "table" or secret(tooltipData.lines)
+            or type(tooltipData.lines) ~= "table" then return nil end
+        for _, line in ipairs(tooltipData.lines) do
+            if not secret(line) and type(line) == "table" and not secret(line.type)
+                and line.type == lineTypes.NestedBlock and not secret(line.tooltipType)
+                and not secret(line.tooltipID) and type(line.tooltipID) == "number" and line.tooltipID > 0 then
+                if line.tooltipType == Enum.TooltipDataType.Item then
+                    return "item:" .. line.tooltipID
+                elseif allowSpell and line.tooltipType == Enum.TooltipDataType.Spell then
+                    local spellData = C_TooltipInfo.GetHyperlink("spell:" .. line.tooltipID)
+                    local item = nestedItem(spellData, false)
+                    if item then return item end
+                end
+            end
+        end
+    end
+    return nestedItem(data, true)
+end
+
 local function matchesRestriction(data, format, playerName)
     if secret(format) or type(format) ~= "string" or secret(playerName) or type(playerName) ~= "string" then return true end
     local placeholder = format:find("%%s")
@@ -456,8 +485,8 @@ local function weaponSlot(tooltip, data, link)
     if link == off and link ~= main then return 17 end
 end
 
-local function itemComparison(tooltip, location, candidateScore, weights)
-    if tooltip ~= ItemRefTooltip then
+local function itemComparison(tooltip, location, candidateScore, weights, recipe)
+    if not recipe and tooltip ~= ItemRefTooltip then
         if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
         local info = tooltip:GetProcessingTooltipInfo()
         if secret(info) or type(info) ~= "table" or secret(info.getterName) then
@@ -521,11 +550,11 @@ local function itemComparison(tooltip, location, candidateScore, weights)
     return table.concat(results, ", ")
 end
 
-local function handComparison(tooltip, candidate, weights, hand)
+local function handComparison(tooltip, candidate, weights, hand, recipe)
     local score, unavailable = scoreItem(candidate, weights, "INVTYPE_WEAPON", hand)
     if unavailable then return nil, unavailable end
     local location = hand == 16 and "INVTYPE_WEAPONMAINHAND" or "INVTYPE_WEAPONOFFHAND"
-    local delta, color = itemComparison(tooltip, location, score, weights)
+    local delta, color = itemComparison(tooltip, location, score, weights, recipe)
     return score, delta, color
 end
 
@@ -539,7 +568,21 @@ local function compare(tooltip, data)
         end
         return
     end
+    local _, _, _, _, _, itemClass = C_Item.GetItemInfoInstant(link)
+    local recipe = not secret(itemClass) and itemClass == 9
+    if recipe then
+        local result = recipeResult(link, data)
+        if not result then
+            tooltip:AddLine("CompareDPS: crafted item unavailable.", 1, 0.7, 0.2)
+            return
+        end
+        link = result
+    end
     local location = itemLocation(link)
+    if recipe and not location then
+        tooltip:AddLine("CompareDPS: crafted item data unavailable; try again.", 1, 0.7, 0.2)
+        return
+    end
     local slotName = location and slotNames[location]
     if not slotName then return end
     local compatible = canEquipForClass(link, location)
@@ -547,6 +590,11 @@ local function compare(tooltip, data)
 
     local weights, label = activeWeights()
     tooltip:AddLine("CompareDPS", 0.8, 0.65, 0.25)
+    if recipe then
+        local name = C_Item.GetItemInfo and C_Item.GetItemInfo(link)
+        if secret(name) or type(name) ~= "string" then name = link end
+        tooltip:AddLine("Crafted item: " .. name, 0.7, 0.8, 1)
+    end
     if compatible == nil then
         tooltip:AddLine("Item compatibility unavailable; try again.", 1, 0.7, 0.2)
         return
@@ -561,11 +609,11 @@ local function compare(tooltip, data)
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
         return
     end
-    local slot = weaponSlot(tooltip, data, link)
+    local slot = not recipe and weaponSlot(tooltip, data, link)
     local _, class = UnitClass("player")
     if location == "INVTYPE_WEAPON" and not slot and not secret(class) and offhandWeaponClasses[class] then
         for _, hand in ipairs({ 16, 17 }) do
-            local score, delta, color = handComparison(tooltip, candidate, weights, hand)
+            local score, delta, color = handComparison(tooltip, candidate, weights, hand, recipe)
             local name = hand == 16 and "Main hand" or "Off hand"
             if not score then
                 tooltip:AddLine(name .. ": " .. delta, 1, 0.7, 0.2)
@@ -586,7 +634,7 @@ local function compare(tooltip, data)
     if candidateMissing then
         tooltip:AddLine(slotName .. ": " .. candidateMissing, 1, 0.7, 0.2)
     else
-        local comparison, color = itemComparison(tooltip, location, candidateScore, weights)
+        local comparison, color = itemComparison(tooltip, location, candidateScore, weights, recipe)
         local suffix = comparison and (" (" .. comparison .. ")") or ""
         local r, g, b = 1, 1, 1
         if color == "ff40ff40" then r, g, b = 0.25, 1, 0.25 end

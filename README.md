@@ -40,6 +40,12 @@ show the difference from equipped gear; positive is higher, negative is lower.
 Rings and trinkets are compared against each equipped slot. Weapon scores
 account for weapon DPS and speed where the selected profile has weights.
 
+Recipe item tooltips attempt to compare the crafted equipment, including when
+the profession is not trained. This is experimental: it relies on the Forever
+client exposing the crafted item in the recipe's nested tooltip data. If that
+data is unavailable, the tooltip reports that the crafted item is unavailable.
+Recipes for non-equipment do not receive a gear score.
+
 ## Weights and limits
 
 Each spec starts with approximate default stat weights. A stat with no weight contributes
