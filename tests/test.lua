@@ -27,8 +27,14 @@ ItemRefShoppingTooltip1.AddLine = GameTooltip.AddLine
 ItemRefShoppingTooltip2.AddLine = GameTooltip.AddLine
 SlashCmdList = {}
 Enum = { TooltipDataType = { Item = 1, Spell = 2 }, TooltipDataLineType = { NestedBlock = 19 } }
-TooltipDataProcessor = {}
-function TooltipDataProcessor.AddTooltipPostCall(_, callback) TooltipDataProcessor.callback = callback end
+TooltipDataProcessor = { AllTypes = "ALL" }
+function TooltipDataProcessor.AddTooltipPostCall(tooltipType, callback)
+    assert(tooltipType == TooltipDataProcessor.AllTypes)
+    TooltipDataProcessor.callback = function(tooltip, data)
+        if data.type == nil then data.type = Enum.TooltipDataType.Item end
+        callback(tooltip, data)
+    end
+end
 
 local items = {
     ["item:1"] = { loc = "INVTYPE_FINGER", int = 20, spell = 10 },
@@ -115,6 +121,10 @@ local items = {
     ["item:103"] = { loc = "", int = 0, spell = 0, classID = 9 },
     ["item:104"] = { loc = "", int = 0, spell = 0, classID = 9 },
     ["item:105"] = { loc = "", int = 0, spell = 0 },
+    ["item:106"] = { loc = "INVTYPE_RANGEDRIGHT", int = 0, spell = 5,
+        classID = 2, subclass = 19, dps = 29, speed = 2 },
+    ["item:107"] = { loc = "INVTYPE_RANGEDRIGHT", int = 0, spell = 0,
+        classID = 2, subclass = 19, dps = 20, speed = 2 },
 }
 C_Item = {}
 local equipped = { [5] = "item:10", [11] = "item:2", [12] = "item:1", [16] = "item:4", [17] = "item:5" }
@@ -155,6 +165,12 @@ C_TooltipInfo = {}
 function C_TooltipInfo.GetHyperlink(link)
     if link == "spell:200" then
         return { lines = { { type = 19, tooltipType = 1, tooltipID = 10 } } }
+    end
+    if link == "spell:201" then
+        return { lines = { { type = 19, tooltipType = 1, tooltipID = 19 } } }
+    end
+    if link == "spell:202" then
+        return { lines = { { type = 19, tooltipType = 1, tooltipID = 106 } } }
     end
     if link == "item:100" then
         return { lines = { { type = 19, tooltipType = 1, tooltipID = 10 } } }
@@ -279,6 +295,67 @@ TooltipDataProcessor.callback(ItemRefTooltip, {
     lines = { { type = 19, tooltipType = 1, tooltipID = 10 } },
 })
 assert(table.concat(ItemRefTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+GameTooltip.info = { getterName = "GetTrainerService", getterArgs = { 7 } }
+for _, tooltipType in ipairs({ Enum.TooltipDataType.Spell, Enum.TooltipDataType.Item, 99 }) do
+    GameTooltip.lines, GameTooltip.colors = {}, {}
+    TooltipDataProcessor.callback(GameTooltip, {
+        type = tooltipType, id = 999, hyperlink = "spell:999",
+        lines = { { type = 19, tooltipType = 1, tooltipID = 10 } },
+    })
+    local trained = table.concat(GameTooltip.lines, "\n")
+    assert(trained:find("Crafted item: Item item:10", 1, true), trained)
+    assert(trained:find("Chest: 9.00 points (+0.00)", 1, true), trained)
+    assert(#GameTooltip.lines == 4, trained)
+end
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { type = Enum.TooltipDataType.Spell, id = 200, lines = {} })
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, {
+    type = Enum.TooltipDataType.Spell,
+    lines = { { type = 19, tooltipType = 2, tooltipID = 200 } },
+})
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { type = Enum.TooltipDataType.Spell, id = 201 })
+assert(#GameTooltip.lines == 0) -- Plate armor the current class cannot equip.
+equipped[18] = "item:107"
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { type = Enum.TooltipDataType.Spell, id = 202 })
+local trainedWand = table.concat(GameTooltip.lines, "\n")
+assert(trainedWand:find("Crafted item: Item item:106", 1, true), trainedWand)
+assert(trainedWand:find("Ranged: 39.80 points (+15.80)", 1, true), trainedWand)
+assert(GameTooltip.colors[4][1] == 0.25 and GameTooltip.colors[4][2] == 1)
+equipped[18] = nil
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { type = 99, id = 200, lines = {} })
+assert(#GameTooltip.lines == 0) -- Non-spell IDs must not be interpreted as spell IDs.
+for _, itemID in ipairs({ 105, 999 }) do
+    GameTooltip.lines, GameTooltip.colors = {}, {}
+    TooltipDataProcessor.callback(GameTooltip, {
+        type = Enum.TooltipDataType.Spell,
+        lines = { { type = 19, tooltipType = 1, tooltipID = itemID } },
+    })
+    local trained = table.concat(GameTooltip.lines, "\n")
+    if itemID == 105 then
+        assert(trained == "", trained)
+    else
+        assert(trained:find("crafted item data unavailable", 1, true), trained)
+    end
+end
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { type = Enum.TooltipDataType.Spell, id = 999, lines = {} })
+assert(#GameTooltip.lines == 0) -- Enchants, profession ranks and other non-item services.
+GameTooltip.info = { getterName = "GetSpellByID" }
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, {
+    type = Enum.TooltipDataType.Spell, id = 200,
+    lines = { { type = 19, tooltipType = 1, tooltipID = 10 } },
+})
+assert(#GameTooltip.lines == 0)
+ItemRefTooltip.lines, ItemRefTooltip.colors = {}, {}
+TooltipDataProcessor.callback(ItemRefTooltip, { type = Enum.TooltipDataType.Spell, id = 200 })
+assert(#ItemRefTooltip.lines == 0)
 GameTooltip.info = nil
 assert(tooltip("item:34"):find("Head: 0.40 points", 1, true))
 assert(tooltip("item:35"):find("Head: 0.40 points", 1, true))

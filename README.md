@@ -47,6 +47,13 @@ client exposing the crafted item in the recipe's nested tooltip data. If that
 data is unavailable, the tooltip reports that the crafted item is unavailable.
 Recipes for non-equipment do not receive a gear score.
 
+Profession trainer tooltips also attempt to score the equipment a taught recipe
+creates and compare it with equipped gear. This uses the trainer's nested item
+data, or the recipe spell's nested item data when available; it does not require
+learning the recipe first. Trainer services without an exposed crafted item,
+including ordinary enchants and profession ranks, do not receive a score.
+This integration still needs verification in WoW Forever.
+
 ## Weights and limits
 
 Each spec starts with approximate default stat weights. A stat with no weight contributes
