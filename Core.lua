@@ -248,7 +248,7 @@ end
 
 local function recipeResult(link, data)
     if secret(data) or type(data) ~= "table" or secret(data.lines) or type(data.lines) ~= "table" then
-        data = C_TooltipInfo.GetHyperlink(link)
+        data = link and C_TooltipInfo.GetHyperlink(link)
     end
     if secret(data) or type(data) ~= "table" or secret(data.lines) or type(data.lines) ~= "table" then
         return nil
@@ -638,9 +638,9 @@ local function handComparison(tooltip, candidate, weights, hand, recipe)
     return score, delta, color
 end
 
-local function compare(tooltip, data)
+local function compare(tooltip, data, craftedLink)
     if not CompareDPSDB then return end
-    local link = getLink(tooltip, data)
+    local link = craftedLink or getLink(tooltip, data)
     if not link then
         local id = type(data) == "table" and data.id
         if not secret(id) and type(id) == "number" and id > 0 then
@@ -656,15 +656,18 @@ local function compare(tooltip, data)
             return
         end
     end
-    local _, _, _, _, _, itemClass = C_Item.GetItemInfoInstant(link)
-    local recipe = not secret(itemClass) and itemClass == 9
-    if recipe then
-        local result = recipeResult(link, data)
-        if not result then
-            tooltip:AddLine("CompareDPS: crafted item unavailable.", 1, 0.7, 0.2)
-            return
+    local recipe = craftedLink ~= nil
+    if not recipe then
+        local _, _, _, _, _, itemClass = C_Item.GetItemInfoInstant(link)
+        recipe = not secret(itemClass) and itemClass == 9
+        if recipe then
+            local result = recipeResult(link, data)
+            if not result then
+                tooltip:AddLine("CompareDPS: crafted item unavailable.", 1, 0.7, 0.2)
+                return
+            end
+            link = result
         end
-        link = result
     end
     local location = itemLocation(link)
     if recipe and not location then
@@ -780,15 +783,29 @@ addon:SetScript("OnEvent", function(_, event, name)
         or type(C_Item.GetItemStats) ~= "function"
         or not C_TooltipInfo or type(C_TooltipInfo.GetHyperlink) ~= "function"
         or not TooltipDataProcessor or type(TooltipDataProcessor.AddTooltipPostCall) ~= "function"
+        or type(TooltipDataProcessor.AllTypes) ~= "string"
         or not Enum or not Enum.TooltipDataType or not Enum.TooltipDataType.Item then
         message("Required item or tooltip APIs are unavailable; comparisons are disabled.")
         return
     end
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-        if tooltip == GameTooltip or tooltip == ItemRefTooltip
-            or tooltip == ShoppingTooltip1 or tooltip == ShoppingTooltip2
-            or tooltip == ItemRefShoppingTooltip1 or tooltip == ItemRefShoppingTooltip2 then
-            compare(tooltip, data)
+    TooltipDataProcessor.AddTooltipPostCall(TooltipDataProcessor.AllTypes, function(tooltip, data)
+        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip
+            and tooltip ~= ShoppingTooltip1 and tooltip ~= ShoppingTooltip2
+            and tooltip ~= ItemRefShoppingTooltip1 and tooltip ~= ItemRefShoppingTooltip2 then return end
+        if secret(data) or type(data) ~= "table" then return end
+        local info = tooltip == GameTooltip and type(tooltip.GetProcessingTooltipInfo) == "function"
+            and tooltip:GetProcessingTooltipInfo()
+        if not secret(info) and type(info) == "table" and not secret(info.getterName)
+            and info.getterName == "GetTrainerService" then
+            local result = recipeResult(nil, data)
+            if not result and not secret(data.type) and data.type == Enum.TooltipDataType.Spell
+                and not secret(data.id) and type(data.id) == "number" and data.id > 0 then
+                result = recipeResult("spell:" .. data.id)
+            end
+            if result then compare(tooltip, data, result) end
+            return
         end
+        if secret(data.type) or data.type ~= Enum.TooltipDataType.Item then return end
+        compare(tooltip, data)
     end)
 end)
