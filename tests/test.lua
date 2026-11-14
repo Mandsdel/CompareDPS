@@ -295,6 +295,13 @@ TooltipDataProcessor.callback(ItemRefTooltip, {
     lines = { { type = 19, tooltipType = 1, tooltipID = 10 } },
 })
 assert(table.concat(ItemRefTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+local unsupportedTooltip = {
+    GetProcessingTooltipInfo = function() error("Unsupported tooltip must not be inspected") end,
+    AddLine = function() error("Unsupported tooltip must not be scored") end,
+}
+for _, tooltipType in ipairs({ Enum.TooltipDataType.Item, Enum.TooltipDataType.Spell }) do
+    TooltipDataProcessor.callback(unsupportedTooltip, { type = tooltipType, hyperlink = "item:10" })
+end
 GameTooltip.info = { getterName = "GetTrainerService", getterArgs = { 7 } }
 for _, tooltipType in ipairs({ Enum.TooltipDataType.Spell, Enum.TooltipDataType.Item, 99 }) do
     GameTooltip.lines, GameTooltip.colors = {}, {}

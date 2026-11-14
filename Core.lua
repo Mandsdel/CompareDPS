@@ -656,15 +656,18 @@ local function compare(tooltip, data, craftedLink)
             return
         end
     end
-    local _, _, _, _, _, itemClass = C_Item.GetItemInfoInstant(link)
-    local recipe = craftedLink ~= nil or (not secret(itemClass) and itemClass == 9)
-    if recipe and not craftedLink then
-        local result = recipeResult(link, data)
-        if not result then
-            tooltip:AddLine("CompareDPS: crafted item unavailable.", 1, 0.7, 0.2)
-            return
+    local recipe = craftedLink ~= nil
+    if not recipe then
+        local _, _, _, _, _, itemClass = C_Item.GetItemInfoInstant(link)
+        recipe = not secret(itemClass) and itemClass == 9
+        if recipe then
+            local result = recipeResult(link, data)
+            if not result then
+                tooltip:AddLine("CompareDPS: crafted item unavailable.", 1, 0.7, 0.2)
+                return
+            end
+            link = result
         end
-        link = result
     end
     local location = itemLocation(link)
     if recipe and not location then
@@ -780,11 +783,15 @@ addon:SetScript("OnEvent", function(_, event, name)
         or type(C_Item.GetItemStats) ~= "function"
         or not C_TooltipInfo or type(C_TooltipInfo.GetHyperlink) ~= "function"
         or not TooltipDataProcessor or type(TooltipDataProcessor.AddTooltipPostCall) ~= "function"
+        or type(TooltipDataProcessor.AllTypes) ~= "string"
         or not Enum or not Enum.TooltipDataType or not Enum.TooltipDataType.Item then
         message("Required item or tooltip APIs are unavailable; comparisons are disabled.")
         return
     end
     TooltipDataProcessor.AddTooltipPostCall(TooltipDataProcessor.AllTypes, function(tooltip, data)
+        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip
+            and tooltip ~= ShoppingTooltip1 and tooltip ~= ShoppingTooltip2
+            and tooltip ~= ItemRefShoppingTooltip1 and tooltip ~= ItemRefShoppingTooltip2 then return end
         if secret(data) or type(data) ~= "table" then return end
         local info = tooltip == GameTooltip and type(tooltip.GetProcessingTooltipInfo) == "function"
             and tooltip:GetProcessingTooltipInfo()
@@ -799,10 +806,6 @@ addon:SetScript("OnEvent", function(_, event, name)
             return
         end
         if secret(data.type) or data.type ~= Enum.TooltipDataType.Item then return end
-        if tooltip == GameTooltip or tooltip == ItemRefTooltip
-            or tooltip == ShoppingTooltip1 or tooltip == ShoppingTooltip2
-            or tooltip == ItemRefShoppingTooltip1 or tooltip == ItemRefShoppingTooltip2 then
-            compare(tooltip, data)
-        end
+        compare(tooltip, data)
     end)
 end)
