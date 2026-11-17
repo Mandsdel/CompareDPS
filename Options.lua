@@ -2,7 +2,7 @@ local _, addon = ...
 
 local window, optionsPanel, minimapButton
 local views = {}
-local editingView, editingProfile
+local editingView, editingProfile, editingDynamic
 
 local statLabels = {
     str = "Strength", agi = "Agility", ap = "Attack power",
@@ -32,17 +32,22 @@ local function cancelEditing()
     if editingView then
         for _, row in ipairs(editingView.rows) do row.input:ClearFocus() end
     end
-    editingView, editingProfile = nil, nil
+    editingView, editingProfile, editingDynamic = nil, nil, nil
 end
 
 function addon.refreshOptions()
     local profiles = addon.classProfiles()
     local profile = profiles and profiles[CompareDPSDB.profile]
-    local weights = addon.activeWeights()
-    if editingProfile and editingProfile ~= profile then cancelEditing() end
-    local keys = {}
+    local baseWeights = profile and (CompareDPSDB.customWeights and CompareDPSDB.customWeights[CompareDPSDB.profile] or profile.weights)
+    local weights, _, dynamicError = addon.activeWeights()
+    local dynamic = CompareDPSDB.dynamicWeights == true
+    if editingProfile and (editingProfile ~= profile or editingDynamic ~= dynamic) then cancelEditing() end
+    local keys, editableCount = {}, 0
     if profile then
-        for key in pairs(profile.weights) do keys[#keys + 1] = key end
+        for key in pairs(profile.weights) do
+            keys[#keys + 1] = key
+            if not dynamic or not addon.isDynamicLocked(key) then editableCount = editableCount + 1 end
+        end
         table.sort(keys, function(a, b)
             return (statLabels[a] or a) < (statLabels[b] or b)
         end)
@@ -50,9 +55,10 @@ function addon.refreshOptions()
     local rowCount = math.ceil(#keys / 2)
     for _, view in ipairs(views) do
         local editing = editingView == view
+        view.dynamic:SetChecked(dynamic)
         view.dropdown:SetText(profile and (profile.label .. "  v")
             or (profiles and "Select specialization  v" or "No supported specializations"))
-        view.heading:SetText(profile and (profile.label .. " stat weights")
+        view.heading:SetText(profile and (profile.label .. (dynamic and " dynamic weights" or " stat weights"))
             or "No specialization selected")
         view.empty:SetText(profiles and "Select a specialization to see its stat weights."
             or "No profiles are available for your class.")
@@ -82,15 +88,20 @@ function addon.refreshOptions()
             row.label:ClearAllPoints()
             row.value:ClearAllPoints()
             row.input:ClearAllPoints()
-            row.label:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20 + column * 280, -164 - (index - 1) * 20)
-            row.value:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 230 + column * 280, -164 - (index - 1) * 20)
-            row.input:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 224 + column * 280, -160 - (index - 1) * 20)
+            row.label:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20 + column * 280, -188 - (index - 1) * 20)
+            row.value:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 230 + column * 280, -188 - (index - 1) * 20)
+            row.input:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 224 + column * 280, -184 - (index - 1) * 20)
             row.key = key
-            row.label:SetText(statLabels[key] or key)
-            row.value:SetText(tostring(weights[key]))
+            local locked = dynamic and addon.isDynamicLocked(key)
+            row.label:SetText((statLabels[key] or key) .. (locked and " (locked)" or ""))
+            local shade = locked and 0.55 or 1
+            row.label:SetTextColor(shade, shade, shade)
+            row.value:SetTextColor(shade, shade, shade)
+            local value = weights and weights[key] or (not locked and baseWeights[key])
+            row.value:SetText(value and (dynamic and string.format("%.3f", value) or tostring(value)) or "N/A")
             row.label:Show()
-            if editing then
-                if not row.input:IsShown() then row.input:SetText(tostring(weights[key])) end
+            if editing and not locked then
+                if not row.input:IsShown() then row.input:SetText(tostring(baseWeights[key])) end
                 row.input:Show()
                 row.value:Hide()
             else
@@ -103,13 +114,15 @@ function addon.refreshOptions()
             view.rows[i].value:Hide()
             view.rows[i].input:Hide()
         end
-        local buttonY = -math.max(220, 184 + rowCount * 20)
+        local buttonY = -math.max(244, 208 + rowCount * 20)
         for i, button in ipairs({ view.edit, view.save, view.cancel, view.reset }) do
             button:ClearAllPoints()
             button:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20 + (i - 1) * 132, buttonY)
         end
         if profile then
             view.reset:Show()
+            if editableCount > 0 then view.edit:Enable(); view.reset:Enable()
+            else view.edit:Disable(); view.reset:Disable() end
             if editing then
                 view.edit:Hide()
                 view.save:Show()
@@ -125,14 +138,16 @@ function addon.refreshOptions()
             view.cancel:Hide()
             view.reset:Hide()
         end
-        view.status:SetText(editing and "Editing: changes apply only after Save." or "")
+        view.status:SetText(dynamicError and ("Dynamic weights unavailable: " .. dynamicError)
+            or addon.dynamicSummary(weights) or (editing and "Editing: changes apply only after Save." or ""))
         view.status:ClearAllPoints()
         view.status:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20, buttonY - 32)
+        view.status:SetPoint("RIGHT", view.parent, "RIGHT", -20, 0)
         view.note:ClearAllPoints()
-        view.note:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20, buttonY - 56)
+        view.note:SetPoint("TOPLEFT", view.parent, "TOPLEFT", 20, buttonY - 140)
         view.note:SetPoint("RIGHT", view.parent, "RIGHT", -20, 0)
     end
-    if window then window:SetHeight(math.max(376, 320 + rowCount * 20)) end
+    if window then window:SetHeight(math.max(484, 428 + rowCount * 20)) end
 end
 
 local function makeContent(parent)
@@ -156,6 +171,17 @@ local function makeContent(parent)
     menu:SetFrameLevel(dropdown:GetFrameLevel() + 2)
     menu:Hide()
     view.dropdown, view.menu = dropdown, menu
+    view.dynamic = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    view.dynamic:SetSize(26, 26)
+    view.dynamic:SetPoint("TOPLEFT", 18, -80)
+    local dynamicLabel = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    dynamicLabel:SetPoint("LEFT", view.dynamic, "RIGHT", 4, 0)
+    dynamicLabel:SetText("Dynamic weights")
+    view.dynamic:SetScript("OnClick", function(self)
+        closeMenu()
+        cancelEditing()
+        addon.setDynamicWeights(not not self:GetChecked())
+    end)
     views[#views + 1] = view
 
     dropdown:SetScript("OnClick", function()
@@ -192,16 +218,16 @@ local function makeContent(parent)
     end)
 
     view.heading = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    view.heading:SetPoint("TOPLEFT", 20, -104)
+    view.heading:SetPoint("TOPLEFT", 20, -128)
     local units = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    units:SetPoint("TOPLEFT", 20, -130)
+    units:SetPoint("TOPLEFT", 20, -154)
     units:SetText("Relative gear points per unit; percentages are per 1 percentage point.")
     view.empty = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    view.empty:SetPoint("TOPLEFT", 20, -164)
+    view.empty:SetPoint("TOPLEFT", 20, -188)
 
     local note = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     note:SetJustifyH("LEFT")
-    note:SetText("Unlisted stats have weight 0. Custom weights are saved per character and specialization.\nClosing this view or switching specialization discards unsaved edits. Scores are approximate, not simulated DPS, and do not account for all item effects.")
+    note:SetText("Unlisted stats have weight 0. Settings are saved per character. Dynamic uses experimental Classic caps, not verified Forever formulas.\nIn Dynamic mode, Edit and Reset affect uncapped stats only; locked weights ignore custom overrides. Item deltas account for crossing caps. See README for limits.")
     view.note = note
     view.status = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     view.status:SetJustifyH("LEFT")
@@ -219,6 +245,7 @@ local function makeContent(parent)
         editingView = view
         local profiles = addon.classProfiles()
         editingProfile = profiles and profiles[CompareDPSDB.profile]
+        editingDynamic = CompareDPSDB.dynamicWeights == true
         addon.refreshOptions()
     end)
     view.save = button("Save", function()
@@ -250,6 +277,15 @@ local function makeContent(parent)
         addon.refreshOptions()
     end)
     parent:SetScript("OnShow", addon.refreshOptions)
+    local elapsed = 0
+    parent:SetScript("OnUpdate", function(_, seconds)
+        if not CompareDPSDB.dynamicWeights then return end
+        elapsed = elapsed + seconds
+        if elapsed >= 0.5 then
+            elapsed = 0
+            addon.refreshOptions()
+        end
+    end)
     parent:SetScript("OnHide", function()
         closeMenu()
         if editingView == view then
