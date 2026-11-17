@@ -797,9 +797,6 @@ local function compare(tooltip, data, craftedLink)
         return
     end
     tooltip:AddLine(label, 0.7, 0.8, 1)
-    if weights.dynamicContext then
-        tooltip:AddLine("Experimental Classic caps vs level 63; active buffs included.", 1, 0.7, 0.2, true)
-    end
     local candidate = readStats(link)
     if not candidate then
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
