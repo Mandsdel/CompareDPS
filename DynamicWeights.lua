@@ -274,20 +274,20 @@ function addon.dynamicSummary(weights)
     if not context then return nil end
     local state = context.state
     local caps = addon.dynamicCaps(state)
-    local text = string.format("Experimental Classic fallback vs level 63. Hit %.2f%% / %.2f%%", state.hit, caps.hit)
-    if state.dual then text = text .. string.format(" special, %.2f%% white", caps.whiteHit) end
-    text = text .. string.format("; crit %.2f%%", state.crit)
+    local text = string.format("Experimental Classic fallback vs level 63. Hit %.1f%% / %.1f%%", state.hit, caps.hit)
+    if state.dual then text = text .. string.format(" special, %.1f%% white", caps.whiteHit) end
+    text = text .. string.format("; crit %.1f%%", state.crit)
     if state.skill then
-        text = text .. string.format("; weapon skill %.0f; white crit cap %.2f%%", state.skill, caps.crit)
+        text = text .. string.format("; weapon skill %.0f; white crit cap %.1f%%", state.skill, caps.crit)
         if state.dual and state.offSkill ~= state.skill then
             local offCaps = addon.dynamicCaps(state, 17)
-            text = text .. string.format(" (off-hand skill %.0f, hit %.2f%%, crit %.2f%%)",
+            text = text .. string.format(" (off-hand skill %.0f, hit %.1f%%, crit %.1f%%)",
                 state.offSkill, offCaps.whiteHit, offCaps.crit)
         end
     end
     if state.tank then
         local defense = defensive(state, {})
-        text = text .. string.format(". Defense %.0f / 440 (%s); boss coverage %.2f%% / 100%% (%s); armor %.0f / 17265",
+        text = text .. string.format(". Defense %.0f / 440 (%s); boss coverage %.1f%% / 100%% (%s); armor %.0f / 17265",
             state.defense, defense.crit < 0.000001 and "crit immune" or "crit vulnerable", defense.coverage,
             defense.crush < 0.000001 and "crush table covered" or "crush vulnerable", state.armor)
     end

@@ -139,6 +139,8 @@ Changing modes discards unsaved edits; saved static cap overrides are never
 replaced with the calculated dynamic numbers.
 
 Displayed dynamic weights estimate the value of the *next small increase*.
+Dynamic weights and summary percentages display one decimal place; calculations
+and saved custom values retain their full precision.
 Dynamic tooltip points represent adding that item's stats to the current
 snapshot; the parenthesized comparison instead removes the old item(s) and
 adds the candidate. A replacement that loses required hit therefore scores

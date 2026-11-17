@@ -98,7 +98,7 @@ function addon.refreshOptions()
             row.label:SetTextColor(shade, shade, shade)
             row.value:SetTextColor(shade, shade, shade)
             local value = weights and weights[key] or (not locked and baseWeights[key])
-            row.value:SetText(value and (dynamic and string.format("%.3f", value) or tostring(value)) or "N/A")
+            row.value:SetText(value and (dynamic and string.format("%.1f", value) or tostring(value)) or "N/A")
             row.label:Show()
             if editing and not locked then
                 if not row.input:IsShown() then row.input:SetText(tostring(baseWeights[key])) end
