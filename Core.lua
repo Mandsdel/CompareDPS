@@ -8,7 +8,7 @@ local slotNames = {
     INVTYPE_LEGS = "Legs", INVTYPE_FEET = "Feet", INVTYPE_FINGER = "Ring",
     INVTYPE_TRINKET = "Trinket", INVTYPE_WEAPON = "Weapon",
     INVTYPE_WEAPONMAINHAND = "Main hand", INVTYPE_2HWEAPON = "Two-hand",
-    INVTYPE_WEAPONOFFHAND = "Off hand", INVTYPE_HOLDABLE = "Off hand",
+    INVTYPE_WEAPONOFFHAND = "Off hand", INVTYPE_HOLDABLE = "Off hand", INVTYPE_SHIELD = "Off hand",
     INVTYPE_RANGED = "Ranged", INVTYPE_RANGEDRIGHT = "Ranged",
 }
 
@@ -19,7 +19,7 @@ local comparisonSlots = {
     INVTYPE_LEGS = { 7 }, INVTYPE_FEET = { 8 }, INVTYPE_FINGER = { 11, 12 },
     INVTYPE_TRINKET = { 13, 14 }, INVTYPE_WEAPON = { 16 },
     INVTYPE_WEAPONMAINHAND = { 16 }, INVTYPE_2HWEAPON = { 16 },
-    INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_HOLDABLE = { 17 },
+    INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_HOLDABLE = { 17 }, INVTYPE_SHIELD = { 17 },
     INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 },
 }
 
@@ -139,7 +139,16 @@ local function activeWeights()
     local profile = profiles and profiles[CompareDPSDB.profile]
     if profile then
         local custom = CompareDPSDB.customWeights and CompareDPSDB.customWeights[CompareDPSDB.profile]
-        return custom or profile.weights, profile.label
+        local base = custom or profile.weights
+        if CompareDPSDB.dynamicWeights then
+            base = {}
+            for key, value in pairs(profile.weights) do
+                base[key] = namespace.isDynamicLocked(key) and value or (custom and custom[key] or value)
+            end
+            local weights, reason = namespace.dynamicWeights(base, combatDomain(), CompareDPSDB.profile)
+            return weights, profile.label .. " (Dynamic)", reason
+        end
+        return base, profile.label
     end
 end
 
@@ -156,18 +165,31 @@ end
 namespace.classProfiles = classProfiles
 namespace.activeWeights = activeWeights
 
+function namespace.setDynamicWeights(enabled)
+    if type(enabled) ~= "boolean" then return false, "Dynamic weights must be enabled or disabled." end
+    CompareDPSDB.dynamicWeights = enabled
+    if namespace.refreshOptions then namespace.refreshOptions() end
+    return true
+end
+
 function namespace.saveWeights(values)
     local profiles = classProfiles()
     local profile = profiles and profiles[CompareDPSDB.profile]
     if not profile then return false, "No specialization selected." end
     if type(values) ~= "table" then return false, "Weights must be a table." end
     local saved = {}
+    local previous = CompareDPSDB.customWeights and CompareDPSDB.customWeights[CompareDPSDB.profile]
     for key in pairs(profile.weights) do
         local value = values[key]
-        if type(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
-            return false, "Enter a finite number for " .. key .. "."
+        if CompareDPSDB.dynamicWeights and namespace.isDynamicLocked(key) then
+            if value ~= nil then return false, key .. " is locked by Dynamic weights." end
+            saved[key] = previous and previous[key] or profile.weights[key]
+        else
+            if type(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
+                return false, "Enter a finite number for " .. key .. "."
+            end
+            saved[key] = value
         end
-        saved[key] = value
     end
     for key in pairs(values) do
         if profile.weights[key] == nil then return false, "Unsupported weight: " .. tostring(key) .. "." end
@@ -184,7 +206,16 @@ function namespace.resetWeights()
         return false, "No specialization selected."
     end
     if CompareDPSDB.customWeights then
-        CompareDPSDB.customWeights[CompareDPSDB.profile] = nil
+        if CompareDPSDB.dynamicWeights then
+            local saved = CompareDPSDB.customWeights[CompareDPSDB.profile]
+            if saved then
+                for key, value in pairs(profiles[CompareDPSDB.profile].weights) do
+                    if not namespace.isDynamicLocked(key) then saved[key] = value end
+                end
+            end
+        else
+            CompareDPSDB.customWeights[CompareDPSDB.profile] = nil
+        end
     end
     if namespace.refreshOptions then namespace.refreshOptions() end
     return true
@@ -356,6 +387,10 @@ local function tooltipStats(link)
             value = text:match("^%+?(%d+%.?%d*)%%%s+block$")
             if value then add(values, "block", tonumber(value)) end
             if text:find("equip:", 1, true) then
+                if CompareDPSDB and CompareDPSDB.dynamicWeights
+                    and namespace.isWeaponSkillBonus(text) then
+                    values.dynamicError = "weapon-skill item bonuses are not modeled"
+                end
                 value = text:match("^equip:%s+increases your spell penetration by (%d+)")
                     or text:match("^equip:%s+increases spell penetration by (%d+)")
                 if value then add(values, "spellpen", tonumber(value)) end
@@ -442,17 +477,19 @@ local function readStats(link)
     if secret(api) or type(api) ~= "table" then
         return nil
     end
-    local stats = {}
+    local stats = { link = link }
     for key, value in pairs(api) do
         local stat = statKeys[key]
         if stat and not secret(value) and type(value) == "number" then
             add(stats, stat, value)
+        elseif stat and secret(value) and CompareDPSDB.dynamicWeights then
+            stats.dynamicError = "item stats are restricted"
         end
     end
     local extra = tooltipStats(link)
     if not extra then return nil end
     for key, value in pairs(extra) do
-        if stats[key] == nil or key == "armor" then
+        if stats[key] == nil or key == "armor" or (CompareDPSDB.dynamicWeights and key == "defense") then
             stats[key] = value
         end
     end
@@ -465,7 +502,16 @@ local function readStats(link)
             stats[key] = percent
         else
             local rating = stats[key .. "rating"] or stats[specific .. "rating"]
-            if rating then stats[key] = rating / (key == "hit" and 10 or 14) end
+            if rating and rating ~= 0 then
+                local conversion
+                if CompareDPSDB.dynamicWeights then conversion = namespace.dynamicRatingPerPercent(key .. domain)
+                else conversion = key == "hit" and 10 or 14 end
+                if not conversion then
+                    stats.dynamicError = "live " .. key .. " rating conversion unavailable"
+                else
+                    stats[key] = rating / conversion
+                end
+            end
         end
         stats[key .. "rating"] = nil
     end
@@ -475,12 +521,25 @@ local function readStats(link)
             stats[key .. "rating"] = nil
         end
     end
-    for key, perPercent in pairs({ dodge = 12, parry = 15 }) do
+    for key, perPercent in pairs({ dodge = 12, parry = 15, block = false, haste = false }) do
         local ratingKey = key .. "rating"
-        if stats[ratingKey] ~= nil then
-            stats[key] = stats[ratingKey] / perPercent
-            stats[ratingKey] = nil
+        if stats[ratingKey] and stats[ratingKey] ~= 0 and (perPercent or CompareDPSDB.dynamicWeights) then
+            local conversion
+            if CompareDPSDB.dynamicWeights then conversion = namespace.dynamicRatingPerPercent(key)
+            else conversion = perPercent end
+            if not conversion then
+                stats.dynamicError = "live " .. key .. " rating conversion unavailable"
+            else
+                stats[key] = stats[ratingKey] / conversion
+                stats[ratingKey] = nil
+            end
         end
+    end
+    local defenseRating = api.ITEM_MOD_DEFENSE_SKILL_RATING_SHORT
+    if CompareDPSDB.dynamicWeights and not secret(defenseRating) and type(defenseRating) == "number"
+        and defenseRating ~= 0
+        and not extra.defense then
+        stats.dynamicError = "defense rating requires a defense-skill tooltip value"
     end
     return stats
 end
@@ -498,7 +557,14 @@ local function weaponKeys(location, slot)
     end
 end
 
-local function scoreItem(stats, weights, location, slot)
+local function scoreItem(stats, weights, location, slot, removed)
+    if stats.dynamicError then return nil, stats.dynamicError end
+    local context = weights.dynamicContext
+    if context then
+        local weaponError = namespace.dynamicWeaponCheck(context, stats.link, location, slot)
+        if weaponError then return nil, weaponError end
+        weights = context.base
+    end
     local score, unavailable = 0, {}
     for _, key in ipairs(statOrder) do
         local value = stats[key]
@@ -523,6 +589,17 @@ local function scoreItem(stats, weights, location, slot)
     end
     if #unavailable > 0 then
         return nil, table.concat(unavailable, ", ") .. " unavailable"
+    end
+    if context then
+        local changes = {}
+        for _, key in ipairs(statOrder) do
+            changes[key] = (stats[key] or 0) - (removed and removed[key] or 0)
+        end
+        -- Weapon DPS/speed remain linear; only the cap-sensitive stat delta is replaced.
+        if removed then
+            for _, key in ipairs(statOrder) do score = score - (removed[key] or 0) * (weights[key] or 0) end
+        end
+        return namespace.dynamicScore(context, changes, score)
     end
     return score
 end
@@ -563,7 +640,7 @@ local comparedGetters = {
     GetTradeTargetItem = true, GetGuildBankItem = true, GetItemKey = true,
 }
 
-local function itemComparison(tooltip, location, candidateScore, weights, recipe)
+local function itemComparison(tooltip, location, candidateScore, weights, recipe, candidate)
     if not recipe and tooltip ~= ItemRefTooltip then
         if tooltip ~= GameTooltip or type(tooltip.GetProcessingTooltipInfo) ~= "function" then return nil end
         local info = tooltip:GetProcessingTooltipInfo()
@@ -581,12 +658,22 @@ local function itemComparison(tooltip, location, candidateScore, weights, recipe
     for _, slot in ipairs(slots) do
         local equipped = GetInventoryItemLink("player", slot)
         if secret(equipped) then return "equipped item unavailable" end
-        local oldScore = 0
+        local oldScore, removed, removedWeaponScore = 0, {}, 0
         if equipped then
             local equippedLocation = itemLocation(equipped)
             if not equippedLocation or not slotNames[equippedLocation] then return "equipped item data unavailable" end
             local stats = readStats(equipped)
             if not stats then return "equipped stats unavailable" end
+            if weights.dynamicContext then
+                for _, key in ipairs(statOrder) do removed[key] = stats[key] or 0 end
+                local baseScore = scoreItem(stats, weights.dynamicContext.base, equippedLocation, slot)
+                if baseScore then
+                    removedWeaponScore = baseScore
+                    for _, key in ipairs(statOrder) do
+                        removedWeaponScore = removedWeaponScore - (stats[key] or 0) * (weights.dynamicContext.base[key] or 0)
+                    end
+                end
+            end
             local missing
             oldScore, missing = scoreItem(stats, weights, equippedLocation, slot)
             if missing then return "equipped item " .. missing end
@@ -611,10 +698,24 @@ local function itemComparison(tooltip, location, candidateScore, weights, recipe
                 local offScore, missing = scoreItem(stats, weights, offhandLocation, 17)
                 if missing then return "off hand " .. missing end
                 oldScore = oldScore + offScore
+                if weights.dynamicContext then
+                    for _, key in ipairs(statOrder) do removed[key] = (removed[key] or 0) + (stats[key] or 0) end
+                    local baseScore = scoreItem(stats, weights.dynamicContext.base, offhandLocation, 17)
+                    removedWeaponScore = removedWeaponScore + baseScore
+                    for _, key in ipairs(statOrder) do
+                        removedWeaponScore = removedWeaponScore - (stats[key] or 0) * (weights.dynamicContext.base[key] or 0)
+                    end
+                end
             end
         end
 
         local delta = candidateScore - oldScore
+        if weights.dynamicContext then
+            local missing
+            delta, missing = scoreItem(candidate, weights, location, slot, removed)
+            if missing then return missing end
+            delta = delta - removedWeaponScore
+        end
         local formatted = string.format("%+.2f", delta)
         local color
         if formatted ~= "+0.00" and formatted ~= "-0.00" then
@@ -634,7 +735,7 @@ local function handComparison(tooltip, candidate, weights, hand, recipe)
     local score, unavailable = scoreItem(candidate, weights, "INVTYPE_WEAPON", hand)
     if unavailable then return nil, unavailable end
     local location = hand == 16 and "INVTYPE_WEAPONMAINHAND" or "INVTYPE_WEAPONOFFHAND"
-    local delta, color = itemComparison(tooltip, location, score, weights, recipe)
+    local delta, color = itemComparison(tooltip, location, score, weights, recipe, candidate)
     return score, delta, color
 end
 
@@ -679,7 +780,7 @@ local function compare(tooltip, data, craftedLink)
     local compatible = canEquipForClass(link, location)
     if compatible == false then return end
 
-    local weights, label = activeWeights()
+    local weights, label, dynamicError = activeWeights()
     tooltip:AddLine("CompareDPS", 0.8, 0.65, 0.25)
     if recipe then
         local name = C_Item.GetItemInfo and C_Item.GetItemInfo(link)
@@ -691,10 +792,14 @@ local function compare(tooltip, data, craftedLink)
         return
     end
     if not weights or not next(weights) then
-        tooltip:AddLine("Choose a spec using the minimap button.", 1, 0.7, 0.2)
+        tooltip:AddLine(dynamicError and ("Dynamic weights unavailable: " .. dynamicError)
+            or "Choose a spec using the minimap button.", 1, 0.7, 0.2, true)
         return
     end
     tooltip:AddLine(label, 0.7, 0.8, 1)
+    if weights.dynamicContext then
+        tooltip:AddLine("Experimental Classic caps vs level 63; active buffs included.", 1, 0.7, 0.2, true)
+    end
     local candidate = readStats(link)
     if not candidate then
         tooltip:AddLine("Item stats unavailable; try again.", 1, 0.7, 0.2)
@@ -725,7 +830,7 @@ local function compare(tooltip, data, craftedLink)
     if candidateMissing then
         tooltip:AddLine(slotName .. ": " .. candidateMissing, 1, 0.7, 0.2)
     else
-        local comparison, color = itemComparison(tooltip, location, candidateScore, weights, recipe)
+        local comparison, color = itemComparison(tooltip, location, candidateScore, weights, recipe, candidate)
         local suffix = comparison and (" (" .. comparison .. ")") or ""
         local r, g, b = 1, 1, 1
         if color == "ff40ff40" then r, g, b = 0.25, 1, 0.25 end
@@ -747,9 +852,10 @@ local function command(input)
         namespace.selectProfile(key)
         message("Using " .. profiles[key].label .. " relative score weights.")
     elseif action == "list" then
-        local weights, label = activeWeights()
+        local weights, label, reason = activeWeights()
         if not weights then
-            message("No profile selected. Use /comparedps spec <name>.")
+            message(reason and ("Dynamic weights unavailable: " .. reason)
+                or "No profile selected. Use /comparedps spec <name>.")
             return
         end
         message(label .. " weights (points per unit):")

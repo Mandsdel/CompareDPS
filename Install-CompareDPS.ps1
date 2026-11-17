@@ -11,7 +11,7 @@ try {
         throw "WoW AddOns directory was not found: $AddOnsPath"
     }
 
-    $files = 'CompareDPS.toc', 'Profiles.lua', 'Core.lua', 'Options.lua'
+    $files = 'CompareDPS.toc', 'Profiles.lua', 'DynamicWeights.lua', 'Core.lua', 'Options.lua'
     foreach ($file in $files) {
         if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $file) -PathType Leaf)) {
             throw "Source file was not found: $file"

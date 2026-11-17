@@ -254,6 +254,7 @@ function C_TooltipInfo.GetHyperlink(link)
 end
 local namespace = {}
 assert(loadfile("Profiles.lua"))("CompareDPS", namespace)
+assert(loadfile("DynamicWeights.lua"))("CompareDPS", namespace)
 assert(loadfile("Core.lua"))("CompareDPS", namespace)
 frame.handler(frame, "ADDON_LOADED", "CompareDPS")
 assert(SLASH_COMPAREDPS1 == "/comparedps" and SLASH_COMPAREDPS2 == "/compare")
@@ -662,4 +663,52 @@ assert(namespace.activeWeights().spellpower == 2.5)
 assert(namespace.resetWeights())
 assert(namespace.activeWeights().spellpower == 1)
 assert(tooltip("item:1"):find("Ring: 18.00 points", 1, true))
+function UnitLevel() return 60 end
+local liveHit = 16
+function GetSpellHitModifier() return liveHit end
+function GetSpellCritChance() return 20 end
+function UnitArmor() return 1000, 1000 end
+items["item:210"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, hit = 1 }
+items["item:211"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0 }
+items["item:212"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, hit = 2 }
+items["item:213"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0,
+    extraLines = { "Equip: Increased Swords +5." } }
+equipped[11], equipped[12] = "item:210", "item:211"
+GameTooltip.info = { getterName = "GetBagItem" }
+assert(namespace.setDynamicWeights(true))
+local dynamic = tooltip("item:211")
+assert(dynamic:find("slot 1: |cffff4040-12.00|r", 1, true), dynamic)
+assert(dynamic:find("slot 2: +0.00", 1, true), dynamic)
+dynamic = tooltip("item:210")
+assert(dynamic:find("slot 1: +0.00", 1, true), dynamic)
+liveHit = 15.5
+equipped[11] = "item:211"
+dynamic = tooltip("item:212")
+assert(dynamic:find("Ring: 6.00 points", 1, true), dynamic)
+assert(dynamic:find("slot 1: |cff40ff40+6.00|r", 1, true), dynamic)
+assert(tooltip("item:7"):find("live hit rating conversion unavailable", 1, true))
+assert(tooltip("item:213"):find("weapon-skill item bonuses are not modeled", 1, true))
+GetSpellHitModifier = nil
+assert(tooltip("item:210"):find("Dynamic weights unavailable: GetSpellHitModifier", 1, true))
+namespace.setDynamicWeights(false)
+assert(tooltip("item:210"):find("Ring: 12.00 points", 1, true))
+playerClass = "WARRIOR"
+assert(namespace.selectProfile("protection"))
+function GetHitModifier() return 9 end
+function GetCritChance() return 20 end
+function UnitAttackBothHands() return 300, 0 end
+function UnitAttackSpeed() return 2 end
+function UnitDefense() return 300, 0 end
+function GetDodgeChance() return 30 end
+function GetParryChance() return 30 end
+function GetBlockChance() return 37.4 end
+items["item:214"] = { loc = "INVTYPE_SHIELD", classID = 4, subclass = 6, int = 0, spell = 0, blockText = 2 }
+items["item:215"] = { loc = "INVTYPE_SHIELD", classID = 4, subclass = 6, int = 0, spell = 0 }
+equipped[16], equipped[17] = "item:4", "item:215"
+namespace.setDynamicWeights(true)
+dynamic = tooltip("item:214")
+assert(dynamic:find("Off hand: 0.00 points (+0.00)", 1, true), dynamic)
+assert(tooltip("item:15"):find("defense rating requires a defense-skill tooltip value", 1, true))
+namespace.setDynamicWeights(false)
+assert(tooltip("item:214"):find("Off hand: 10.00 points", 1, true))
 print("CompareDPS checks passed")

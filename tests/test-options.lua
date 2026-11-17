@@ -3,6 +3,10 @@ local methods = {}
 function methods:SetScript(event, handler) self.scripts[event] = handler end
 function methods:SetText(text) self.text = text end
 function methods:GetText() return self.text end
+function methods:SetChecked(value) self.checked = value end
+function methods:GetChecked() return self.checked end
+function methods:Enable() self.enabled = true end
+function methods:Disable() self.enabled = false end
 function methods:Show()
     self.shown = true
     if self.scripts.OnShow then self.scripts.OnShow(self) end
@@ -20,7 +24,7 @@ for _, name in ipairs({
     "SetSize", "SetPoint", "ClearAllPoints", "SetHeight", "SetFrameLevel",
     "SetFrameStrata", "SetClampedToScreen", "SetAllPoints", "SetColorTexture",
     "SetTexture", "SetTexCoord", "SetHighlightTexture", "RegisterForClicks",
-    "SetJustifyH", "SetAutoFocus", "ClearFocus", "SetFocus", "RegisterEvent",
+    "SetJustifyH", "SetAutoFocus", "ClearFocus", "SetFocus", "RegisterEvent", "SetTextColor",
 }) do methods[name] = function() end end
 function CreateFrame(kind, name, parent, template)
     local frame = setmetatable({
@@ -57,6 +61,7 @@ function UnitClass() return class, class end
 SlashCmdList = {}
 local addon = {}
 assert(loadfile("Profiles.lua"))("CompareDPS", addon)
+assert(loadfile("DynamicWeights.lua"))("CompareDPS", addon)
 assert(loadfile("Core.lua"))("CompareDPS", addon)
 assert(loadfile("Options.lua"))("CompareDPS", addon)
 addon.initializeOptions()
@@ -269,6 +274,100 @@ edit.scripts.OnClick()
 registeredPanel:Hide()
 assert(save.shown)
 cancel.scripts.OnClick()
+-- Static overrides survive Dynamic mode; uncapped edits are shared between modes.
+class = "WARLOCK"
+addon.selectProfile("demonology")
+edit.scripts.OnClick()
+input(dropdown.parent, "Hit (1%)"):SetText("77")
+input(dropdown.parent, "Crit (1%)"):SetText("88")
+input(dropdown.parent, "Spell penetration"):SetText("9")
+input(dropdown.parent, "Spell power"):SetText("5")
+save.scripts.OnClick()
+assert(addon.activeWeights().hit == 77 and addon.activeWeights().crit == 88)
+function UnitLevel() return 60 end
+local liveHit = 16
+function GetSpellHitModifier() return liveHit end
+function GetSpellCritChance() return 20 end
+function UnitArmor() return 1000, 1000 end
+local toggle, settingsToggle
+for _, frame in ipairs(frames) do
+    if frame.kind == "CheckButton" and frame.parent == dropdown.parent then toggle = frame end
+    if frame.kind == "CheckButton" and frame.parent == registeredPanel then settingsToggle = frame end
+end
+assert(toggle and settingsToggle and not toggle:GetChecked())
+toggle:SetChecked(true)
+toggle.scripts.OnClick(toggle)
+assert(CompareDPSDB.dynamicWeights and settingsToggle:GetChecked())
+assert(addon.activeWeights().hit == 0)
+assert(math.abs(addon.activeWeights().crit - 8) < 0.00001)
+assert(addon.activeWeights().spellpen == 0 and addon.activeWeights().spellpower == 5)
+assert(CompareDPSDB.customWeights.demonology.hit == 77)
+assert(displayedWeights(dropdown.parent)["Hit (1%) (locked)"] == "0.0")
+assert(displayedWeights(registeredPanel)["Spell power"] == "5.0")
+edit.scripts.OnClick()
+assert(save.shown and edit.enabled and control(dropdown.parent, "Reset to Default").enabled)
+for i, frame in ipairs(frames) do
+    if frame.parent == dropdown.parent and frame.kind == "FontString" and frame.shown
+        and frame.text:find(" (locked)", 1, true) then
+        assert(frames[i + 2].kind == "EditBox" and not frames[i + 2].shown)
+    end
+end
+input(dropdown.parent, "Spell power"):SetText("6")
+save.scripts.OnClick()
+assert(addon.activeWeights().spellpower == 6 and CompareDPSDB.customWeights.demonology.hit == 77)
+local badSave = {}
+for key, value in pairs(addon.profiles.WARLOCK.demonology.weights) do
+    if not addon.isDynamicLocked(key) then badSave[key] = value end
+end
+badSave.hit = 123
+local saved, errorMessage = addon.saveWeights(badSave)
+assert(not saved and errorMessage:find("locked", 1, true))
+assert(CompareDPSDB.customWeights.demonology.hit == 77)
+liveHit = 15
+dropdown.parent.scripts.OnUpdate(dropdown.parent, 0.5)
+assert(displayedWeights(dropdown.parent)["Hit (1%) (locked)"] == "12.0")
+settingsToggle:SetChecked(false)
+settingsToggle.scripts.OnClick(settingsToggle)
+assert(not CompareDPSDB.dynamicWeights and not toggle:GetChecked())
+assert(addon.activeWeights().hit == 77 and addon.activeWeights().crit == 88)
+assert(addon.activeWeights().spellpen == 9 and addon.activeWeights().spellpower == 6)
+addon.setDynamicWeights(true)
+control(dropdown.parent, "Reset to Default").scripts.OnClick()
+assert(addon.activeWeights().spellpower == baseline)
+addon.setDynamicWeights(false)
+assert(addon.activeWeights().hit == 77 and addon.activeWeights().crit == 88)
+assert(addon.activeWeights().spellpower == baseline)
+-- Unavailable live APIs never masquerade as working dynamic weights.
+GetSpellHitModifier = nil
+addon.setDynamicWeights(true)
+assert(displayedWeights(dropdown.parent)["Hit (1%) (locked)"] == "N/A")
+edit.scripts.OnClick()
+input(dropdown.parent, "Spell power"):SetText("7")
+save.scripts.OnClick()
+addon.setDynamicWeights(false)
+assert(addon.activeWeights().spellpower == 7 and addon.activeWeights().hit == 77)
+class = "WARRIOR"
+addon.selectProfile("protection")
+local tankCustom = {}
+for key, value in pairs(addon.activeWeights()) do tankCustom[key] = value end
+tankCustom.defense, tankCustom.block, tankCustom.str = 91, 92, 10
+assert(addon.saveWeights(tankCustom))
+function GetHitModifier() return 9 end
+function GetCritChance() return 20 end
+function UnitAttackBothHands() return 300, 0 end
+function UnitAttackSpeed() return 2 end
+function UnitDefense() return 300, 140 end
+function GetDodgeChance() return 20 end
+function GetParryChance() return 20 end
+function GetBlockChance() return 20 end
+addon.setDynamicWeights(true)
+assert(addon.activeWeights().defense ~= 91 and addon.activeWeights().block ~= 92)
+edit.scripts.OnClick()
+input(dropdown.parent, "Strength"):SetText("11")
+save.scripts.OnClick()
+addon.setDynamicWeights(false)
+assert(addon.activeWeights().defense == 91 and addon.activeWeights().block == 92)
+assert(addon.activeWeights().str == 11)
 class = "DRUID"
 addon.selectProfile("feraltank")
 class = "UNSUPPORTED"
