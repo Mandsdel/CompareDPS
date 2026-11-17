@@ -24,6 +24,48 @@ local statLabels = {
     speed2h = "Two-hand speed (seconds)", speedRanged = "Ranged speed (seconds)",
 }
 
+local statGroups = {
+    { "str", "agi", "stamina", "int", "spirit" },
+    { "hit", "hitrating", "crit", "critrating", "haste", "hasterating" },
+    { "ap", "rap", "fap" },
+    { "spellpower", "heal", "arcane", "fire", "frost", "holy", "nature", "shadow", "spellpen" },
+    { "weaponDps" },
+    { "dpsMH", "speedMH" },
+    { "dpsOH", "speedOH" },
+    { "dps2h", "speed2h" },
+    { "dpsRanged", "speedRanged" },
+    { "armor", "defense", "defenserating", "dodge", "dodgerating",
+        "parry", "parryrating", "block", "blockrating", "blockValue" },
+    { "health", "hp5", "mana", "mp5" },
+}
+
+local function orderedStats(weights)
+    local keys, boundaries, seen = {}, {}, {}
+    for _, group in ipairs(statGroups) do
+        local count = #keys
+        for _, key in ipairs(group) do
+            seen[key] = true
+            if weights[key] ~= nil then keys[#keys + 1] = key end
+        end
+        if #keys > count then boundaries[#boundaries + 1] = #keys end
+    end
+    local extra = {}
+    for key in pairs(weights) do
+        if not seen[key] then extra[#extra + 1] = key end
+    end
+    table.sort(extra, function(a, b) return (statLabels[a] or a) < (statLabels[b] or b) end)
+    for _, key in ipairs(extra) do
+        keys[#keys + 1] = key
+        boundaries[#boundaries + 1] = #keys
+    end
+    -- Balance columns only at group boundaries so related stats stay together.
+    local split = #keys
+    for _, boundary in ipairs(boundaries) do
+        if math.abs(boundary - #keys / 2) < math.abs(split - #keys / 2) then split = boundary end
+    end
+    return keys, split
+end
+
 local function closeMenu()
     for _, view in ipairs(views) do view.menu:Hide() end
 end
@@ -42,17 +84,14 @@ function addon.refreshOptions()
     local weights, _, dynamicError = addon.activeWeights()
     local dynamic = CompareDPSDB.dynamicWeights == true
     if editingProfile and (editingProfile ~= profile or editingDynamic ~= dynamic) then cancelEditing() end
-    local keys, editableCount = {}, 0
+    local keys, split, editableCount = {}, 0, 0
     if profile then
-        for key in pairs(profile.weights) do
-            keys[#keys + 1] = key
+        keys, split = orderedStats(profile.weights)
+        for _, key in ipairs(keys) do
             if not dynamic or not addon.isDynamicLocked(key) then editableCount = editableCount + 1 end
         end
-        table.sort(keys, function(a, b)
-            return (statLabels[a] or a) < (statLabels[b] or b)
-        end)
     end
-    local rowCount = math.ceil(#keys / 2)
+    local rowCount = math.max(split, #keys - split)
     for _, view in ipairs(views) do
         local editing = editingView == view
         view.dynamic:SetChecked(dynamic)
@@ -83,8 +122,8 @@ function addon.refreshOptions()
                 end)
                 view.rows[i] = row
             end
-            local column = i > rowCount and 1 or 0
-            local index = column == 1 and (i - rowCount) or i
+            local column = i > split and 1 or 0
+            local index = column == 1 and (i - split) or i
             row.label:ClearAllPoints()
             row.value:ClearAllPoints()
             row.input:ClearAllPoints()

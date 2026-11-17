@@ -12,6 +12,7 @@ function methods:Show()
     if self.scripts.OnShow then self.scripts.OnShow(self) end
 end
 function methods:SetWidth(width) self.width = width end
+function methods:SetPoint(...) self.point = { ... } end
 function methods:Hide()
     self.shown = false
     if self.scripts.OnHide then self.scripts.OnHide(self) end
@@ -21,7 +22,7 @@ function methods:GetFrameLevel() return 1 end
 function methods:CreateFontString() return CreateFrame("FontString", nil, self) end
 function methods:CreateTexture() return CreateFrame("Texture", nil, self) end
 for _, name in ipairs({
-    "SetSize", "SetPoint", "ClearAllPoints", "SetHeight", "SetFrameLevel",
+    "SetSize", "ClearAllPoints", "SetHeight", "SetFrameLevel",
     "SetFrameStrata", "SetClampedToScreen", "SetAllPoints", "SetColorTexture",
     "SetTexture", "SetTexCoord", "SetHighlightTexture", "RegisterForClicks",
     "SetJustifyH", "SetAutoFocus", "ClearFocus", "SetFocus", "RegisterEvent", "SetTextColor",
@@ -160,6 +161,46 @@ local labelsByKey = {
     speedOH = "Off-hand speed (seconds)", speed2h = "Two-hand speed (seconds)",
     speedRanged = "Ranged speed (seconds)",
 }
+local expectedGroups = {
+    { "str", "agi", "stamina", "int", "spirit" },
+    { "hit", "crit" },
+    { "ap", "rap", "fap" },
+    { "spellpower", "heal", "arcane", "fire", "frost", "holy", "nature", "shadow", "spellpen" },
+    { "dpsMH", "speedMH" }, { "dpsOH", "speedOH" },
+    { "dps2h", "speed2h" }, { "dpsRanged", "speedRanged" },
+    { "armor", "defense", "dodge", "parry", "block", "blockValue" },
+    { "hp5", "mana", "mp5" },
+}
+local function assertGroupedLayout(parent, profile)
+    local rows = {}
+    for _, frame in ipairs(frames) do
+        if frame.parent == parent and frame.kind == "FontString" and frame.width == 210 and frame.shown then
+            rows[#rows + 1] = frame
+        end
+    end
+    local index, previousX, previousY = 0, 20, -168
+    for _, group in ipairs(expectedGroups) do
+        local groupX
+        for _, stat in ipairs(group) do
+            if profile.weights[stat] ~= nil then
+                index = index + 1
+                local row = assert(rows[index])
+                local locked = CompareDPSDB.dynamicWeights and addon.isDynamicLocked(stat)
+                assert(row.text == labelsByKey[stat] .. (locked and " (locked)" or ""), "Unexpected stat order")
+                local x, y = row.point[4], row.point[5]
+                groupX = groupX or x
+                assert(x == groupX, "Related stats split across columns")
+                if x == previousX then
+                    assert(y == previousY - 20, "Incorrect row spacing")
+                else
+                    assert(previousX == 20 and x == 300 and y == -188, "Incorrect column transition")
+                end
+                previousX, previousY = x, y
+            end
+        end
+    end
+    assert(index == #rows, "Ungrouped stat")
+end
 for classKey, profiles in pairs(addon.profiles) do
     class = classKey
     for key, profile in pairs(profiles) do
@@ -176,7 +217,14 @@ for classKey, profiles in pairs(addon.profiles) do
                 expectedCount = expectedCount + 1
             end
             assert(count == expectedCount, "Stale weight rows")
+            assertGroupedLayout(parent, profile)
         end
+        CompareDPSDB.dynamicWeights = true
+        addon.refreshOptions()
+        assertGroupedLayout(dropdown.parent, profile)
+        assertGroupedLayout(registeredPanel, profile)
+        CompareDPSDB.dynamicWeights = false
+        addon.refreshOptions()
     end
 end
 class = "DRUID"

@@ -65,6 +65,11 @@ point and weapon speed per second. Negative weights are shown as-is.
 Displayed weights use one decimal place in both modes, including the `list`
 command. Edit fields retain the full saved value so saving unrelated edits
 does not round existing custom weights; calculations also retain full precision.
+In both options views, stats are grouped consistently across all specs: primary
+attributes, hit/crit/haste, attack power, spell/healing power and spell schools,
+weapon stats, defenses, then health/mana and regeneration. Read down the left
+column, then the right; related groups never split across columns, and weapon
+DPS stays beside its matching speed.
 For healing profiles, the spell power weight applies to spell damage and the
 healing power weight applies separately to healing. A combined damage-and-healing
 bonus contributes to both; a split bonus contributes its respective amounts.
