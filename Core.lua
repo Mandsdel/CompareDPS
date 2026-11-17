@@ -861,10 +861,10 @@ local function command(input)
         message(label .. " weights (points per unit):")
         for _, name in ipairs(statOrder) do
             local weight = weights[name]
-            message(name .. ": " .. tostring(weight or 0))
+            message(string.format("%s: %.1f", name, weight or 0))
         end
         for _, name in ipairs(weaponWeightOrder) do
-            message(name .. ": " .. tostring(weights[name] or 0))
+            message(string.format("%s: %.1f", name, weights[name] or 0))
         end
     else
         message("/compare opens options | /comparedps spec <name> | list")

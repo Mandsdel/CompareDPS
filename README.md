@@ -62,6 +62,9 @@ Each spec starts with approximate default stat weights. A stat with no weight co
 zero; unlisted stats in the options view have weight zero. Values are relative
 gear points per stat unit, with percentage stats weighted per 1 percentage
 point and weapon speed per second. Negative weights are shown as-is.
+Displayed weights use one decimal place in both modes, including the `list`
+command. Edit fields retain the full saved value so saving unrelated edits
+does not round existing custom weights; calculations also retain full precision.
 For healing profiles, the spell power weight applies to spell damage and the
 healing power weight applies separately to healing. A combined damage-and-healing
 bonus contributes to both; a split bonus contributes its respective amounts.
