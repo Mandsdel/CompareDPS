@@ -87,6 +87,15 @@ end
 assert(dropdown)
 assert(dropdown.parent.backdrop.bgFile == "Interface\\DialogFrame\\UI-DialogBox-Background")
 assert(dropdown.parent.backdrop.edgeFile == "Interface\\DialogFrame\\UI-DialogBox-Border")
+local windowTitle
+for _, frame in ipairs(frames) do
+    if frame.parent == dropdown.parent and frame.kind == "FontString" and frame.text == "CompareDPS" then
+        windowTitle = frame
+    end
+end
+assert(windowTitle and windowTitle.point[1] == "CENTER")
+assert(windowTitle.point[2].texture == "Interface\\DialogFrame\\UI-DialogBox-Header")
+assert(windowTitle.point[3] == "TOP" and windowTitle.point[4] == 0 and windowTitle.point[5] == -20)
 local settingsDropdown
 for _, frame in ipairs(frames) do
     if frame.parent == registeredPanel and frame.template == "UIPanelButtonTemplate"

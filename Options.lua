@@ -233,11 +233,11 @@ function addon.refreshOptions()
     if window then window:SetHeight(math.max(484, 428 + rowCount * 20)) end
 end
 
-local function makeContent(parent, standalone)
+local function makeContent(parent, header)
     local view = { parent = parent, rows = {} }
     local items = {}
-    local title = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-    if standalone then title:SetPoint("TOP", 0, -3)
+    local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    if header then title:SetPoint("CENTER", header, "TOP", 0, -20)
     else title:SetPoint("TOPLEFT", 18, -16) end
     title:SetText("CompareDPS")
 
@@ -405,7 +405,7 @@ local function makeWindow()
     header:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
     header:SetSize(256, 64)
     header:SetPoint("TOP", 0, 16)
-    makeContent(window, true)
+    makeContent(window, header)
     local close = CreateFrame("Button", nil, window, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 0, 0)
     close:SetScript("OnClick", function() window:Hide() end)
