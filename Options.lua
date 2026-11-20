@@ -4,6 +4,45 @@ local window, optionsPanel, minimapButton
 local views = {}
 local editingView, editingProfile, editingDynamic
 
+local specIcons = {
+    HUNTER = { beastmastery = "Ability_Hunter_BeastTaming", marksmanship = "Ability_Marksmanship",
+        survival = "Ability_Hunter_SwiftStrike" },
+    MAGE = { arcane = "Spell_Holy_MagicalSentry", fire = "Spell_Fire_FireBolt02", frost = "Spell_Frost_FrostBolt02" },
+    ROGUE = { assassination = "Ability_Rogue_Eviscerate", combat = "Ability_BackStab", subtlety = "Ability_Stealth" },
+    WARRIOR = { arms = "Ability_Warrior_SavageBlow", fury = "Ability_Warrior_InnerRage",
+        protection = "Ability_Warrior_DefensiveStance" },
+    SHAMAN = { elemental = "Spell_Nature_Lightning", enhancement = "Spell_Nature_LightningShield",
+        restoration = "Spell_Nature_MagicImmunity" },
+    PALADIN = { holy = "Spell_Holy_HolyBolt", protection = "Spell_Holy_DevotionAura", retribution = "Spell_Holy_AuraOfLight" },
+    PRIEST = { discipline = "Spell_Holy_WordFortitude", holy = "Spell_Holy_HolyBolt", shadow = "Spell_Shadow_ShadowWordPain" },
+    DRUID = { balance = "Spell_Nature_StarFall", feral = "Ability_Druid_CatForm", feraltank = "Ability_Racial_BearForm",
+        restoration = "Spell_Nature_HealingTouch" },
+    WARLOCK = { affliction = "Spell_Shadow_DeathCoil", demonology = "Spell_Shadow_Metamorphosis",
+        destruction = "Spell_Shadow_RainOfFire" },
+}
+
+local function profileIcon(key)
+    local _, class = UnitClass("player")
+    local name = specIcons[class] and specIcons[class][key]
+    return "Interface\\Icons\\" .. (name or "INV_Misc_Book_09")
+end
+
+local function dialogBackground(frame)
+    if frame.SetBackdrop then
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32,
+            insets = { left = 11, right = 12, top = 12, bottom = 11 },
+        })
+    else
+        local texture = frame:CreateTexture(nil, "BACKGROUND")
+        texture:SetPoint("TOPLEFT", 4, -4)
+        texture:SetPoint("BOTTOMRIGHT", -4, 4)
+        texture:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
+    end
+end
+
 local statLabels = {
     str = "Strength", agi = "Agility", ap = "Attack power",
     rap = "Ranged attack power", fap = "Feral attack power",
@@ -94,6 +133,11 @@ function addon.refreshOptions()
     local rowCount = math.max(split, #keys - split)
     for _, view in ipairs(views) do
         local editing = editingView == view
+        view.portrait:SetTexture(profileIcon(CompareDPSDB.profile))
+        local className, class = UnitClass("player")
+        view.className:SetText(className or "")
+        local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+        if color then view.className:SetTextColor(color.r, color.g, color.b) end
         view.dynamic:SetChecked(dynamic)
         view.dropdown:SetText(profile and (profile.label .. "  v")
             or (profiles and "Select specialization  v" or "No supported specializations"))
@@ -189,20 +233,31 @@ function addon.refreshOptions()
     if window then window:SetHeight(math.max(484, 428 + rowCount * 20)) end
 end
 
-local function makeContent(parent)
+local function makeContent(parent, standalone)
     local view = { parent = parent, rows = {} }
     local items = {}
     local title = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", 18, -16)
+    if standalone then title:SetPoint("TOP", 0, -3)
+    else title:SetPoint("TOPLEFT", 18, -16) end
     title:SetText("CompareDPS")
 
+    view.portrait = parent:CreateTexture(nil, "ARTWORK")
+    view.portrait:SetSize(44, 44)
+    view.portrait:SetPoint("TOPLEFT", 22, -46)
+    local portraitBorder = parent:CreateTexture(nil, "OVERLAY")
+    portraitBorder:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+    portraitBorder:SetSize(72, 72)
+    portraitBorder:SetPoint("CENTER", view.portrait, "CENTER", 0, 0)
+    view.className = parent:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    view.className:SetPoint("TOPRIGHT", -26, -55)
+
     local label = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    label:SetPoint("TOPLEFT", 20, -58)
+    label:SetPoint("TOPLEFT", 84, -44)
     label:SetText("Specialization:")
 
     local dropdown = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     dropdown:SetSize(210, 24)
-    dropdown:SetPoint("LEFT", label, "RIGHT", 12, 0)
+    dropdown:SetPoint("TOPLEFT", 84, -64)
 
     local menu = CreateFrame("Frame", nil, parent)
     menu:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
@@ -212,7 +267,7 @@ local function makeContent(parent)
     view.dropdown, view.menu = dropdown, menu
     view.dynamic = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     view.dynamic:SetSize(26, 26)
-    view.dynamic:SetPoint("TOPLEFT", 18, -80)
+    view.dynamic:SetPoint("TOPLEFT", 18, -94)
     local dynamicLabel = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     dynamicLabel:SetPoint("LEFT", view.dynamic, "RIGHT", 4, 0)
     dynamicLabel:SetText("Dynamic weights")
@@ -242,8 +297,12 @@ local function makeContent(parent)
                 choice = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate")
                 choice:SetSize(210, 24)
                 choice:SetPoint("TOPLEFT", menu, "TOPLEFT", 0, -(i - 1) * 24)
+                choice.icon = choice:CreateTexture(nil, "ARTWORK")
+                choice.icon:SetSize(18, 18)
+                choice.icon:SetPoint("LEFT", 5, 0)
                 items[i] = choice
             end
+            choice.icon:SetTexture(profileIcon(key))
             choice:SetText(profiles[key].label)
             choice:SetScript("OnClick", function()
                 addon.selectProfile(key)
@@ -341,21 +400,12 @@ local function makeWindow()
     window:SetPoint("CENTER")
     window:SetFrameStrata("DIALOG")
     window:SetClampedToScreen(true)
-    if window.SetBackdrop then
-        window:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8X8",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            edgeSize = 14,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-        window:SetBackdropColor(0.05, 0.04, 0.08, 0.98)
-        window:SetBackdropBorderColor(0.58, 0.51, 0.79, 1)
-    else
-        local background = window:CreateTexture(nil, "BACKGROUND")
-        background:SetAllPoints()
-        background:SetColorTexture(0.05, 0.04, 0.08, 0.98)
-    end
-    makeContent(window)
+    dialogBackground(window)
+    local header = window:CreateTexture(nil, "ARTWORK")
+    header:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
+    header:SetSize(256, 64)
+    header:SetPoint("TOP", 0, 16)
+    makeContent(window, true)
     local close = CreateFrame("Button", nil, window, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 0, 0)
     close:SetScript("OnClick", function() window:Hide() end)

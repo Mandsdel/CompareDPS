@@ -27,8 +27,12 @@ when the selection changes, including changes made with the `spec` command.
 All class profiles are supported; only your class's specializations are listed.
 The choice is
 saved per character; CompareDPS does not detect talents or select a profile
-automatically. Your class determines which profiles are available. Armor and
-weapon types your class cannot use are not scored. You can also use:
+automatically. The standalone window uses classic WoW dialog artwork and a
+framed specialization icon. Both views show your class and built-in Classic
+spell/talent artwork for each specialization, including icons in the selector.
+No external artwork or UI libraries are downloaded. Your class determines which
+profiles are available. Armor and weapon types your class cannot use are not
+scored. You can also use:
 
 ```text
 /comparedps spec <name>

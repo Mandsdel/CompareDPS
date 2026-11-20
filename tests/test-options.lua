@@ -21,10 +21,12 @@ function methods:IsShown() return self.shown end
 function methods:GetFrameLevel() return 1 end
 function methods:CreateFontString() return CreateFrame("FontString", nil, self) end
 function methods:CreateTexture() return CreateFrame("Texture", nil, self) end
+function methods:SetTexture(texture) self.texture = texture end
+function methods:SetBackdrop(backdrop) self.backdrop = backdrop end
 for _, name in ipairs({
     "SetSize", "ClearAllPoints", "SetHeight", "SetFrameLevel",
     "SetFrameStrata", "SetClampedToScreen", "SetAllPoints", "SetColorTexture",
-    "SetTexture", "SetTexCoord", "SetHighlightTexture", "RegisterForClicks",
+    "SetTexCoord", "SetHighlightTexture", "RegisterForClicks",
     "SetJustifyH", "SetAutoFocus", "ClearFocus", "SetFocus", "RegisterEvent", "SetTextColor",
 }) do methods[name] = function() end end
 function CreateFrame(kind, name, parent, template)
@@ -83,6 +85,8 @@ for _, frame in ipairs(frames) do
     end
 end
 assert(dropdown)
+assert(dropdown.parent.backdrop.bgFile == "Interface\\DialogFrame\\UI-DialogBox-Background")
+assert(dropdown.parent.backdrop.edgeFile == "Interface\\DialogFrame\\UI-DialogBox-Border")
 local settingsDropdown
 for _, frame in ipairs(frames) do
     if frame.parent == registeredPanel and frame.template == "UIPanelButtonTemplate"
@@ -207,6 +211,19 @@ for classKey, profiles in pairs(addon.profiles) do
         addon.selectProfile(key)
         assert(dropdown.text == profile.label .. "  v")
         assert(settingsDropdown.text == dropdown.text)
+        local expectedIcon
+        for _, parent in ipairs({ dropdown.parent, registeredPanel }) do
+            local portrait
+            for _, frame in ipairs(frames) do
+                if frame.parent == parent and frame.kind == "Texture"
+                    and frame.point and frame.point[1] == "TOPLEFT"
+                    and frame.point[2] == 22 then portrait = frame end
+            end
+            assert(portrait and portrait.texture:find("Interface\\Icons\\", 1, true) == 1)
+            assert(not portrait.texture:find("INV_Misc_Book_09", 1, true), "Missing icon for " .. classKey .. "/" .. key)
+            if expectedIcon then assert(portrait.texture == expectedIcon) end
+            expectedIcon = portrait.texture
+        end
         for _, parent in ipairs({ dropdown.parent, registeredPanel }) do
             local values = displayedWeights(parent)
             local count, expectedCount = 0, 0
