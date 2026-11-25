@@ -126,7 +126,7 @@ pre-expansion conventions below, not their current-retail formulas.
 | Defense | 440 skill removes normal boss melee crits. This is a soft cap: defense still improves miss/dodge/parry/block until their table is saturated. |
 | Block/avoidance | Boss-adjusted miss + dodge + parry + block saturates at 100%: equivalent to the usual 102.4% equal-level sheet coverage at level 60. Block chance then has no additional table value; full avoidance can still replace blocked hits. Before saturation, pushing crushing blows off the table has extra value. The assumed base crush chance is 15% with trained level-60 defense; bonus defense does not directly reduce it. This is separate from the 440 defense threshold. |
 | Armor | 75% physical mitigation, at 17,265 effective armor against level 63. |
-| Spell penetration | Zero value: this generic boss model assumes no reducible magical resistance. It cannot remove level-based resistance. |
+| Spell penetration | Uses the same fixed or custom weight as static mode, including against a zero-resistance target. No resistance cap is modeled. |
 
 Caps do not generate accurate DPS weights by themselves. This mode adjusts the
 built-in reference weights, using an explicit **50% white / 50% special**
@@ -137,8 +137,8 @@ These are scoring choices, not simulated damage or survival probabilities.
 The model is primarily intended for level-60 characters; lower-level estimates
 against the same level-63 boss are particularly approximate.
 
-Cap-controlled rows (**Hit, Crit, Defense, Dodge, Parry, Block, Armor and Spell
-penetration**, where present in the profile) are grey and marked **(locked)**.
+Cap-controlled rows (**Hit, Crit, Defense, Dodge, Parry, Block and Armor**, where
+present in the profile) are grey and marked **(locked)**.
 They use built-in reference weights and ignore saved custom overrides in
 Dynamic mode. **Edit** and **Reset to Default** remain available for the other
 stats only; neither action changes the saved static values of locked rows.
@@ -183,12 +183,19 @@ Important limitations:
   the old fixed conversions below are used only in static mode. Defense-rating
   items require a tooltip giving actual defense skill.
 
-### Static scoring limitations
+### Spell penetration and scoring limitations
 
-Spell penetration reduces a target's existing magical resistance; it is not
-spell hit and does not remove resistance from a target's higher level. Its
-value is situational, mainly against resistance in PvP or specific encounters,
-so the fixed weights are only a rough gear-scoring compromise.
+The Forever UI's character-sheet code includes an estimate for negative
+resistance as well as positive resistance. A
+[player combat-log analysis](https://us.forums.blizzard.com/en/wow/t/wow-foreverpotential-bug-binary-spells-are-penalized-twice-by-magic-resistance/2415491)
+also reports bonus damage from piercing, although a
+[later PvP report](https://us.forums.blizzard.com/en/wow/t/bug-spell-vulnerability-does-not-work/2424454)
+did not observe it. Its current behavior, formula and cap are not confirmed.
+Spell penetration is not spell hit, and its actual value depends on the
+encounter and damage mix. The addon recognizes the English **"Your spells
+pierce X Magical Resistance"** wording as spell penetration. Both modes use
+the same editable, approximate per-point weight; Dynamic mode does not estimate
+target resistances, damage amplification, resistance floors or any penetration cap.
 
 CompareDPS is not a combat simulator. It may omit procs, on-use effects, set
 bonuses, enchants, caps, unsupported stats and tooltip formats. English

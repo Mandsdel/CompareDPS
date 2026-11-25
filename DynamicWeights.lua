@@ -2,7 +2,7 @@ local _, addon = ...
 
 local bossLevel, bossSkill = 63, 315
 local modeled = { hit = true, crit = true, defense = true, dodge = true,
-    parry = true, block = true, armor = true, spellpen = true }
+    parry = true, block = true, armor = true }
 local schools = { arcane = 7, fire = 3, frost = 5, elemental = 4, restoration = 4,
     balance = 4, shadow = 6, affliction = 6, demonology = 6, destruction = 3 }
 local weaponSkills = { axes = true, swords = true, maces = true, daggers = true,

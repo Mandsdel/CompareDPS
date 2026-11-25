@@ -377,10 +377,11 @@ toggle.scripts.OnClick(toggle)
 assert(CompareDPSDB.dynamicWeights and settingsToggle:GetChecked())
 assert(addon.activeWeights().hit == 0)
 assert(math.abs(addon.activeWeights().crit - 8) < 0.00001)
-assert(addon.activeWeights().spellpen == 0 and addon.activeWeights().spellpower == 5)
+assert(addon.activeWeights().spellpen == 9 and addon.activeWeights().spellpower == 5)
 assert(CompareDPSDB.customWeights.demonology.hit == 77)
 assert(displayedWeights(dropdown.parent)["Hit (1%) (locked)"] == "0.0")
 assert(displayedWeights(registeredPanel)["Spell power"] == "5.0")
+assert(displayedWeights(registeredPanel)["Spell penetration"] == "9.0")
 edit.scripts.OnClick()
 assert(save.shown and edit.enabled and control(dropdown.parent, "Reset to Default").enabled)
 for i, frame in ipairs(frames) do
@@ -390,8 +391,10 @@ for i, frame in ipairs(frames) do
     end
 end
 input(dropdown.parent, "Spell power"):SetText("6")
+input(dropdown.parent, "Spell penetration"):SetText("3")
 save.scripts.OnClick()
-assert(addon.activeWeights().spellpower == 6 and CompareDPSDB.customWeights.demonology.hit == 77)
+assert(addon.activeWeights().spellpower == 6 and addon.activeWeights().spellpen == 3
+    and CompareDPSDB.customWeights.demonology.hit == 77)
 local badSave = {}
 for key, value in pairs(addon.profiles.WARLOCK.demonology.weights) do
     if not addon.isDynamicLocked(key) then badSave[key] = value end
@@ -407,7 +410,7 @@ settingsToggle:SetChecked(false)
 settingsToggle.scripts.OnClick(settingsToggle)
 assert(not CompareDPSDB.dynamicWeights and not toggle:GetChecked())
 assert(addon.activeWeights().hit == 77 and addon.activeWeights().crit == 88)
-assert(addon.activeWeights().spellpen == 9 and addon.activeWeights().spellpower == 6)
+assert(addon.activeWeights().spellpen == 3 and addon.activeWeights().spellpower == 6)
 addon.setDynamicWeights(true)
 control(dropdown.parent, "Reset to Default").scripts.OnClick()
 assert(addon.activeWeights().spellpower == baseline)

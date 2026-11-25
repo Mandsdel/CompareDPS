@@ -380,6 +380,9 @@ local function tooltipStats(link)
             end
             local armor = text:match("^(%d+)%s+armor$")
             if armor then values.armor = tonumber(armor) end
+            value = text:match("^equip:%s+your spells pierce (%d+) magical resistance%.?$")
+                or text:match("^your spells pierce (%d+) magical resistance%.?$")
+            if value then add(values, "spellpen", tonumber(value)) end
             value = text:match("^%+?(%d+)%s+defense$")
             if value then add(values, "defense", tonumber(value)) end
             value = text:match("^%+?(%d+)%s+block value$")

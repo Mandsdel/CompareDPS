@@ -57,7 +57,9 @@ context = addon.makeDynamicWeights(base, state({ hit = 8, dual = false })).dynam
 close(addon.dynamicScore(context, { hit = 2 }, 32), 16)
 context = addon.makeDynamicWeights(base, state({ domain = "Spell", hit = 15.5 })).dynamicContext
 close(addon.dynamicScore(context, { hit = 1, str = 4 }, 20), 12)
-close(addon.dynamicScore(context, { spellpen = 10 }, 1), 0)
+close(addon.dynamicScore(context, { spellpen = 10 }, 1), 1)
+close(addon.dynamicScore(context, { spellpen = -10 }, -1), -1)
+close(addon.makeDynamicWeights(base, spell).spellpen, 0.1)
 close(base.hit, 16)
 
 -- Given defense crit immunity, defense retains avoidance value rather than hard-capping.
@@ -166,5 +168,6 @@ snapshot, reason = addon.readDynamicState("Spell", "affliction")
 assert(not snapshot and reason:find("levels 1-60", 1, true))
 assert(addon.isDynamicLocked("hit") and addon.isDynamicLocked("crit")
     and addon.isDynamicLocked("defense") and addon.isDynamicLocked("block"))
-assert(not addon.isDynamicLocked("str") and not addon.isDynamicLocked("spellpower"))
+assert(not addon.isDynamicLocked("str") and not addon.isDynamicLocked("spellpower")
+    and not addon.isDynamicLocked("spellpen"))
 print("CompareDPS dynamic weight checks passed")

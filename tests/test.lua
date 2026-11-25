@@ -73,6 +73,12 @@ local items = {
     ["item:34"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4, spellPenAPI = 4 },
     ["item:35"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPen = 4 },
     ["item:36"] = { loc = "INVTYPE_HEAD", int = 0, spell = 0, spellPenText = 4 },
+    ["item:216"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0,
+        extraLines = { "Equip: Your spells pierce 10 Magical Resistance." } },
+    ["item:217"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0, spellPenAPI = 10,
+        extraLines = { "Your spells pierce 10 Magical Resistance." } },
+    ["item:218"] = { loc = "INVTYPE_FINGER", int = 0, spell = 0,
+        extraLines = { "Equip: Your enemy's spells pierce 10 Magical Resistance." } },
     ["item:37"] = { loc = "INVTYPE_LEGS", int = 10, spell = 5 },
     ["item:38"] = { loc = "INVTYPE_LEGS", int = 5, spell = 5 },
     ["item:39"] = { loc = "INVTYPE_2HWEAPON", int = 0, spell = 36 },
@@ -368,6 +374,9 @@ GameTooltip.info = nil
 assert(tooltip("item:34"):find("Head: 0.40 points", 1, true))
 assert(tooltip("item:35"):find("Head: 0.40 points", 1, true))
 assert(tooltip("item:36"):find("Head: 0.40 points", 1, true))
+assert(tooltip("item:216"):find("Ring: 1.00 points", 1, true))
+assert(tooltip("item:217"):find("Ring: 1.00 points", 1, true))
+assert(tooltip("item:218"):find("Ring: 0.00 points", 1, true))
 assert(tooltip("item:19") == "" and tooltip("item:20") == "")
 assert(tooltip("item:29") == "" and tooltip("item:28") == "")
 assert(tooltip("item:22") == "")
@@ -679,6 +688,13 @@ assert(namespace.setDynamicWeights(true))
 local dynamic = tooltip("item:211")
 assert(dynamic:find("slot 1: |cffff4040-12.00|r", 1, true), dynamic)
 assert(dynamic:find("slot 2: +0.00", 1, true), dynamic)
+dynamic = tooltip("item:216")
+assert(dynamic:find("Ring: 1.00 points", 1, true), dynamic)
+assert(dynamic:find("slot 2: |cff40ff40+1.00|r", 1, true), dynamic)
+equipped[12] = "item:216"
+dynamic = tooltip("item:211")
+assert(dynamic:find("slot 2: |cffff4040-1.00|r", 1, true), dynamic)
+equipped[12] = "item:211"
 dynamic = tooltip("item:210")
 assert(dynamic:find("slot 1: +0.00", 1, true), dynamic)
 liveHit = 15.5
