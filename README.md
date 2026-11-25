@@ -104,7 +104,8 @@ Dynamic mode uses the character's current hit, crit, equipped weapon skill
 block chances. Current effective armor is also read. It assumes a fixed
 **level-63 raid boss**, attacking from behind for DPS and from the front for
 tanks. Feral attack skill uses level x 5 rather than the equipped weapon's
-trained skill.
+trained skill. Other weapon skills use the equipped weapon's skill line and its
+current modifier; an empty main hand uses the unarmed skill.
 
 **These are Classic fallback mechanics, not confirmed Forever formulas.**
 Forever-specific formulas were not available when this experimental model

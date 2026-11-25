@@ -9,6 +9,11 @@ local weaponSkills = { axes = true, swords = true, maces = true, daggers = true,
     ["two-handed axes"] = true, ["two-handed swords"] = true, ["two-handed maces"] = true,
     ["fist weapons"] = true, unarmed = true, polearms = true, staves = true,
     bows = true, guns = true, crossbows = true, thrown = true, wands = true }
+local weaponSkillIDs = {
+    Sword1H = 43, Axe1H = 44, Bows = 45, Guns = 46, Mace1H = 54, Sword2H = 55,
+    Staff = 136, Mace2H = 160, Axe2H = 172, Dagger = 173, Thrown = 176,
+    Crossbow = 226, Wand = 228, Polearm = 229, Unarmed = 162,
+}
 
 function addon.isWeaponSkillBonus(text)
     return text:find("skill with", 1, true) or text:find("weapon skill", 1, true)
@@ -35,14 +40,56 @@ local function read(name, ...)
     return value
 end
 
-local function skill(name, hand)
+local function skill(name)
     if type(_G[name]) ~= "function" then return nil, name .. " unavailable" end
-    local base, modifier, offBase, offModifier = _G[name]("player")
-    if hand == 17 then base, modifier = offBase, offModifier end
+    local base, modifier = _G[name]("player")
     if not number(base) or not number(modifier) then
         return nil, name .. " returned unavailable/restricted skill data"
     end
     return base + modifier, nil, base
+end
+
+local function equippedWeaponSkill(slot)
+    if type(GetInventoryItemID) ~= "function" then return nil, "GetInventoryItemID unavailable" end
+    if type(C_SkillInfo) ~= "table" or type(C_SkillInfo.GetSkillLineInfoByID) ~= "function" then
+        return nil, "C_SkillInfo.GetSkillLineInfoByID unavailable"
+    end
+    local itemID = GetInventoryItemID("player", slot)
+    if type(issecretvalue) == "function" and issecretvalue(itemID) then
+        return nil, "equipped weapon data is restricted"
+    end
+    local skillID
+    if itemID == nil and slot == 16 then
+        skillID = 162
+    elseif not number(itemID) then
+        return nil, "equipped weapon data unavailable"
+    else
+        if type(C_Item) ~= "table" or type(C_Item.GetItemInfoInstant) ~= "function" then
+            return nil, "C_Item.GetItemInfoInstant unavailable"
+        end
+        local _, _, _, _, _, classID, subclassID = C_Item.GetItemInfoInstant(itemID)
+        if not number(classID) or not number(subclassID) then return nil, "weapon type data unavailable/restricted" end
+        if type(Enum) ~= "table" or type(Enum.ItemClass) ~= "table"
+            or type(Enum.ItemWeaponSubclass) ~= "table" or not number(Enum.ItemClass.Weapon) then
+            return nil, "weapon subclass constants unavailable"
+        end
+        if classID ~= Enum.ItemClass.Weapon then return nil, "equipped item is not a weapon" end
+        for name, id in pairs(weaponSkillIDs) do
+            if number(Enum.ItemWeaponSubclass[name]) and Enum.ItemWeaponSubclass[name] == subclassID then
+                skillID = id
+                break
+            end
+        end
+        if not skillID then return nil, "equipped weapon skill type unavailable" end
+    end
+    local info = C_SkillInfo.GetSkillLineInfoByID(skillID)
+    if type(issecretvalue) == "function" and issecretvalue(info) then
+        return nil, "weapon skill data is restricted"
+    end
+    if type(info) ~= "table" or not number(info.rank) or not number(info.modifier) then
+        return nil, "weapon skill data unavailable/restricted"
+    end
+    return info.rank + info.modifier
 end
 
 function addon.dynamicRatingPerPercent(key)
@@ -92,7 +139,7 @@ function addon.readDynamicState(domain, profile)
         if state.feral then
             state.skill, state.offSkill, state.dual = state.level * 5, state.level * 5, false
         elseif domain == "Melee" then
-            state.skill, reason = skill("UnitAttackBothHands")
+            state.skill, reason = equippedWeaponSkill(16)
             if not state.skill then return nil, reason end
             if type(UnitAttackSpeed) ~= "function" then return nil, "UnitAttackSpeed unavailable" end
             local _, speed = UnitAttackSpeed("player")
@@ -102,13 +149,13 @@ function addon.readDynamicState(domain, profile)
             if speed ~= nil and not number(speed) then return nil, "off-hand attack speed unavailable" end
             state.dual = number(speed) and speed > 0
             if state.dual then
-                state.offSkill, reason = skill("UnitAttackBothHands", 17)
+                state.offSkill, reason = equippedWeaponSkill(17)
                 if not state.offSkill or state.offSkill <= 0 then return nil, reason or "off-hand skill unavailable" end
             else
                 state.offSkill = state.skill
             end
         else
-            state.skill, reason = skill("UnitRangedAttack")
+            state.skill, reason = equippedWeaponSkill(18)
             if not state.skill then return nil, reason end
         end
     end
@@ -119,7 +166,7 @@ function addon.readDynamicState(domain, profile)
     if not number(armor) then return nil, "effective armor unavailable/restricted" end
     state.armor = armor
     if state.tank then
-        state.defense, reason, state.baseDefense = skill("UnitDefense")
+        state.defense, reason, state.baseDefense = skill("UnitDefenseSkill")
         if not state.defense then return nil, reason end
         for key, api in pairs({ dodge = "GetDodgeChance", parry = "GetParryChance", block = "GetBlockChance" }) do
             state[key], reason = read(api)

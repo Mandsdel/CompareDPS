@@ -696,9 +696,10 @@ playerClass = "WARRIOR"
 assert(namespace.selectProfile("protection"))
 function GetHitModifier() return 9 end
 function GetCritChance() return 20 end
-function UnitAttackBothHands() return 300, 0 end
+function GetInventoryItemID() return nil end
+C_SkillInfo = { GetSkillLineInfoByID = function() return { rank = 300, modifier = 0 } end }
 function UnitAttackSpeed() return 2 end
-function UnitDefense() return 300, 0 end
+function UnitDefenseSkill() return 300, 0 end
 function GetDodgeChance() return 30 end
 function GetParryChance() return 30 end
 function GetBlockChance() return 37.4 end

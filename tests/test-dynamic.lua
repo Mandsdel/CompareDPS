@@ -105,10 +105,19 @@ function GetSpellCritChance() return 20 end
 function GetCritChance() return 25 end
 function GetRangedCritChance() return 30 end
 function UnitArmor() return 1000, 2000 end
-function UnitAttackBothHands() return 300, 5, 300, 8 end
-function UnitRangedAttack() return 300, 5 end
+Enum = { ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Sword1H = 7, Axe1H = 0, Bows = 2 } }
+local equipped = { [16] = 100, [17] = 101, [18] = 102 }
+function GetInventoryItemID(_, slot) return equipped[slot] end
+C_Item = { GetItemInfoInstant = function(id)
+    local subclasses = { [100] = 7, [101] = 0, [102] = 2 }
+    return id, nil, nil, nil, nil, 2, subclasses[id]
+end }
+C_SkillInfo = { GetSkillLineInfoByID = function(id)
+    local modifiers = { [43] = 5, [44] = 8, [45] = 5, [162] = 0 }
+    if modifiers[id] then return { rank = 300, modifier = modifiers[id] } end
+end }
 function UnitAttackSpeed() return 2, 1.5 end
-function UnitDefense() return 300, 140 end
+function UnitDefenseSkill() return 300, 140 end
 function GetDodgeChance() return 10 end
 function GetParryChance() return 10 end
 function GetBlockChance() return 20 end
@@ -120,6 +129,23 @@ close(snapshot.armor, 2000)
 assert(snapshot.dual and snapshot.tank)
 close(assert(addon.readDynamicState("Ranged", "marksmanship")).skill, 305)
 close(assert(addon.readDynamicState("Melee", "feral")).skill, 300)
+equipped[16] = nil
+close(assert(addon.readDynamicState("Melee", "arms")).skill, 300)
+equipped[16] = 100
+equipped[17] = nil
+snapshot, reason = addon.readDynamicState("Melee", "fury")
+assert(not snapshot and reason:find("equipped weapon data unavailable", 1, true))
+equipped[17] = 101
+local getSkill = C_SkillInfo.GetSkillLineInfoByID
+C_SkillInfo.GetSkillLineInfoByID = function() return { rank = 300 } end
+snapshot, reason = addon.readDynamicState("Melee", "arms")
+assert(not snapshot and reason:find("weapon skill data unavailable", 1, true))
+C_SkillInfo.GetSkillLineInfoByID = getSkill
+local getDefense = UnitDefenseSkill
+UnitDefenseSkill = nil
+snapshot, reason = addon.readDynamicState("Melee", "protection")
+assert(not snapshot and reason:find("UnitDefenseSkill unavailable", 1, true))
+UnitDefenseSkill = getDefense
 snapshot = assert(addon.readDynamicState("Spell", "affliction"))
 close(snapshot.hit, 15)
 CR_HIT_SPELL, CR_CRIT_SPELL = 8, 11
