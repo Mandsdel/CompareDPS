@@ -51,6 +51,11 @@ client exposing the crafted item in the recipe's nested tooltip data. If that
 data is unavailable, the tooltip reports that the crafted item is unavailable.
 Recipes for non-equipment do not receive a gear score.
 
+Chat-linked profession recipes also attempt to compare the crafted equipment
+using the link's nested tooltip data, its recipe spell, or the profession
+output API. If the client does not expose an output item, no score is shown;
+ordinary enchants and non-equipment recipes are not scored.
+
 Profession trainer tooltips also attempt to score the equipment a taught recipe
 creates and compare it with equipped gear. This uses the trainer's nested item
 data, or the recipe spell's nested item data when available; it does not require

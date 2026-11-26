@@ -306,6 +306,31 @@ local function recipeResult(link, data)
     return nestedItem(data, true)
 end
 
+local function recipeHyperlink(tooltip, data)
+    local link = data.hyperlink
+    local info = type(tooltip.GetProcessingTooltipInfo) == "function" and tooltip:GetProcessingTooltipInfo()
+    if not secret(info) and type(info) == "table" and not secret(info.getterName)
+        and info.getterName == "GetHyperlink" and not secret(info.getterArgs)
+        and type(info.getterArgs) == "table" then
+        link = info.getterArgs[1]
+    end
+    if secret(link) or type(link) ~= "string" then return nil end
+    local id = link:match("^enchant:(%d+)") or link:match("|Henchant:(%d+)")
+    return id and tonumber(id)
+end
+
+local function linkedRecipeResult(id, data)
+    local result = recipeResult(nil, data) or recipeResult("spell:" .. id)
+    if result then return result end
+    if not C_TradeSkillUI or type(C_TradeSkillUI.GetRecipeOutputItemData) ~= "function" then return nil end
+    local output = C_TradeSkillUI.GetRecipeOutputItemData(id)
+    if secret(output) or type(output) ~= "table" then return nil end
+    local link = output.hyperlink
+    if not secret(link) and type(link) == "string" and link:find("item:", 1, true) then return link end
+    local itemID = output.itemID
+    if not secret(itemID) and type(itemID) == "number" and itemID > 0 then return "item:" .. itemID end
+end
+
 local function matchesRestriction(data, format, playerName)
     if secret(format) or type(format) ~= "string" or secret(playerName) or type(playerName) ~= "string" then return true end
     local placeholder = format:find("%%s")
@@ -899,6 +924,12 @@ addon:SetScript("OnEvent", function(_, event, name)
             and tooltip ~= ShoppingTooltip1 and tooltip ~= ShoppingTooltip2
             and tooltip ~= ItemRefShoppingTooltip1 and tooltip ~= ItemRefShoppingTooltip2 then return end
         if secret(data) or type(data) ~= "table" then return end
+        local recipeID = recipeHyperlink(tooltip, data)
+        if recipeID and recipeID > 0 then
+            local result = linkedRecipeResult(recipeID, data)
+            if result then compare(tooltip, data, result) end
+            return
+        end
         local info = tooltip == GameTooltip and type(tooltip.GetProcessingTooltipInfo) == "function"
             and tooltip:GetProcessingTooltipInfo()
         if not secret(info) and type(info) == "table" and not secret(info.getterName)

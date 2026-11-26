@@ -20,6 +20,7 @@ function GameTooltip:AddLine(text, r, g, b)
     self.colors[#self.lines] = { r, g, b }
 end
 function GameTooltip:GetProcessingTooltipInfo() return self.info end
+ItemRefTooltip.GetProcessingTooltipInfo = GameTooltip.GetProcessingTooltipInfo
 ShoppingTooltip1.AddLine = GameTooltip.AddLine
 ShoppingTooltip2.AddLine = GameTooltip.AddLine
 ItemRefTooltip.AddLine = GameTooltip.AddLine
@@ -302,6 +303,46 @@ TooltipDataProcessor.callback(ItemRefTooltip, {
     lines = { { type = 19, tooltipType = 1, tooltipID = 10 } },
 })
 assert(table.concat(ItemRefTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+ItemRefTooltip.info = { getterName = "GetHyperlink", getterArgs = { "enchant:200" } }
+ItemRefTooltip.lines, ItemRefTooltip.colors = {}, {}
+TooltipDataProcessor.callback(ItemRefTooltip, {
+    type = Enum.TooltipDataType.Spell,
+    lines = { { type = 19, tooltipType = 1, tooltipID = 10 } },
+})
+local linkedRecipe = table.concat(ItemRefTooltip.lines, "\n")
+assert(linkedRecipe:find("Crafted item: Item item:10", 1, true), linkedRecipe)
+assert(linkedRecipe:find("Chest: 9.00 points (+0.00)", 1, true), linkedRecipe)
+assert(#ItemRefTooltip.lines == 4, linkedRecipe)
+ItemRefTooltip.lines, ItemRefTooltip.colors = {}, {}
+TooltipDataProcessor.callback(ItemRefTooltip, { type = Enum.TooltipDataType.Spell, lines = {} })
+assert(table.concat(ItemRefTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+C_TradeSkillUI = { GetRecipeOutputItemData = function(id)
+    if id == 300 then return { itemID = 10 } end
+    if id == 301 then return { hyperlink = "item:10" } end
+    if id == 302 then return { itemID = 105 } end
+    return {}
+end }
+for _, id in ipairs({ 300, 301 }) do
+    ItemRefTooltip.info.getterArgs[1] = "enchant:" .. id
+    ItemRefTooltip.lines, ItemRefTooltip.colors = {}, {}
+    TooltipDataProcessor.callback(ItemRefTooltip, { type = Enum.TooltipDataType.Spell, lines = {} })
+    assert(table.concat(ItemRefTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+end
+for _, id in ipairs({ 302, 999 }) do
+    ItemRefTooltip.info.getterArgs[1] = "enchant:" .. id
+    ItemRefTooltip.lines = {}
+    TooltipDataProcessor.callback(ItemRefTooltip, { type = Enum.TooltipDataType.Spell, lines = {} })
+    assert(#ItemRefTooltip.lines == 0)
+end
+ItemRefTooltip.info = nil
+GameTooltip.info = { getterName = "GetHyperlink", getterArgs = { "|cffffd000|Henchant:200|h[Recipe]|h|r" } }
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { type = Enum.TooltipDataType.Spell, lines = {} })
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
+GameTooltip.info = nil
+GameTooltip.lines, GameTooltip.colors = {}, {}
+TooltipDataProcessor.callback(GameTooltip, { type = Enum.TooltipDataType.Item, hyperlink = "enchant:200", lines = {} })
+assert(table.concat(GameTooltip.lines, "\n"):find("Chest: 9.00 points (+0.00)", 1, true))
 local unsupportedTooltip = {
     GetProcessingTooltipInfo = function() error("Unsupported tooltip must not be inspected") end,
     AddLine = function() error("Unsupported tooltip must not be scored") end,
