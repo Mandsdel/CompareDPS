@@ -1,6 +1,5 @@
 local _, addon = ...
 
-local bossLevel, bossSkill = 63, 315
 local modeled = { hit = true, crit = true, defense = true, dodge = true,
     parry = true, block = true, armor = true }
 local schools = { arcane = 7, fire = 3, frost = 5, elemental = 4, restoration = 4,
@@ -31,6 +30,14 @@ end
 
 local function clamp(value, low, high)
     return math.max(low, math.min(high, value))
+end
+
+local function opponentLevel(state)
+    return state.level + 3
+end
+
+local function armorCap(state)
+    return 3 * (400 + 85 * opponentLevel(state))
 end
 
 local function read(name, ...)
@@ -179,6 +186,8 @@ function addon.readDynamicState(domain, profile)
 end
 
 function addon.dynamicCaps(state, hand)
+    local bossLevel = opponentLevel(state)
+    local bossSkill = bossLevel * 5
     if state.domain == "Spell" then
         local difference = bossLevel - state.level
         local miss = difference > 2 and (17 + (difference - 3) * 11) or (4 + difference)
@@ -201,6 +210,8 @@ function addon.dynamicCaps(state, hand)
 end
 
 local function defensive(state, changes)
+    local bossLevel = opponentLevel(state)
+    local bossSkill = bossLevel * 5
     local defense = state.defense + (changes.defense or 0)
     local defenseDelta = (changes.defense or 0) * 0.04
     local levelPenalty = (bossLevel - state.level) * 0.2
@@ -259,7 +270,7 @@ local function potential(context, changes)
             result = result + (changes[key] or 0) * (base[key] or 0)
         end
     end
-    result = result + clamp(state.armor + (changes.armor or 0), 0, 3 * (400 + 85 * bossLevel)) * (base.armor or 0)
+    result = result + clamp(state.armor + (changes.armor or 0), 0, armorCap(state)) * (base.armor or 0)
     return result
 end
 
@@ -321,7 +332,9 @@ function addon.dynamicSummary(weights)
     if not context then return nil end
     local state = context.state
     local caps = addon.dynamicCaps(state)
-    local text = string.format("Experimental Classic fallback vs level 63. Hit %.1f%% / %.1f%%", state.hit, caps.hit)
+    local bossLevel = opponentLevel(state)
+    local text = string.format("Experimental Classic fallback: player level %d vs level %d. Hit %.1f%% / %.1f%%",
+        state.level, bossLevel, state.hit, caps.hit)
     if state.dual then text = text .. string.format(" special, %.1f%% white", caps.whiteHit) end
     text = text .. string.format("; crit %.1f%%", state.crit)
     if state.skill then
@@ -334,9 +347,10 @@ function addon.dynamicSummary(weights)
     end
     if state.tank then
         local defense = defensive(state, {})
-        text = text .. string.format(". Defense %.0f / 440 (%s); boss coverage %.1f%% / 100%% (%s); armor %.0f / 17265",
-            state.defense, defense.crit < 0.000001 and "crit immune" or "crit vulnerable", defense.coverage,
-            defense.crush < 0.000001 and "crush table covered" or "crush vulnerable", state.armor)
+        text = text .. string.format(". Defense %.0f / %d (%s); boss coverage %.1f%% / 100%% (%s); armor %.0f / %.0f",
+            state.defense, bossLevel * 5 + 125, defense.crit < 0.000001 and "crit immune" or "crit vulnerable",
+            defense.coverage, defense.crush < 0.000001 and "crush table covered" or "crush vulnerable",
+            state.armor, armorCap(state))
     end
     return text .. ". Snapshot includes active buffs; not simulated DPS."
 end

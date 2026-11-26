@@ -729,6 +729,10 @@ assert(namespace.setDynamicWeights(true))
 local dynamic = tooltip("item:211")
 assert(dynamic:find("slot 1: |cffff4040-12.00|r", 1, true), dynamic)
 assert(dynamic:find("slot 2: +0.00", 1, true), dynamic)
+function UnitLevel() return 20 end
+dynamic = tooltip("item:211")
+assert(dynamic:find("slot 1: |cffff4040-12.00|r", 1, true), dynamic)
+function UnitLevel() return 60 end
 dynamic = tooltip("item:216")
 assert(dynamic:find("Ring: 1.00 points", 1, true), dynamic)
 assert(dynamic:find("slot 2: |cff40ff40+1.00|r", 1, true), dynamic)

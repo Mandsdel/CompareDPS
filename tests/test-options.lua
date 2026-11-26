@@ -382,6 +382,19 @@ assert(CompareDPSDB.customWeights.demonology.hit == 77)
 assert(displayedWeights(dropdown.parent)["Hit (1%) (locked)"] == "0.0")
 assert(displayedWeights(registeredPanel)["Spell power"] == "5.0")
 assert(displayedWeights(registeredPanel)["Spell penetration"] == "9.0")
+function UnitLevel() return 20 end
+dropdown.parent.scripts.OnUpdate(dropdown.parent, 0.5)
+local summaries = 0
+for _, view in ipairs({ dropdown.parent, registeredPanel }) do
+    for _, frame in ipairs(frames) do
+        if frame.parent == view and frame.kind == "FontString"
+            and frame.text and frame.text:find("player level 20 vs level 23", 1, true) then
+            summaries = summaries + 1
+        end
+    end
+end
+assert(summaries == 2)
+function UnitLevel() return 60 end
 edit.scripts.OnClick()
 assert(save.shown and edit.enabled and control(dropdown.parent, "Reset to Default").enabled)
 for i, frame in ipairs(frames) do

@@ -106,11 +106,13 @@ every half-second; each item tooltip reads a fresh stat snapshot.
 
 Dynamic mode uses the character's current hit, crit, equipped weapon skill
 (separate hands when dual-wielding), and, for tanks, defense, avoidance and
-block chances. Current effective armor is also read. It assumes a fixed
-**level-63 raid boss**, attacking from behind for DPS and from the front for
+block chances. Current effective armor is also read. It assumes an
+opponent **three levels above the player** (level 63 at player level 60),
+attacking from behind for DPS and from the front for
 tanks. Feral attack skill uses level x 5 rather than the equipped weapon's
 trained skill. Other weapon skills use the equipped weapon's skill line and its
-current modifier; an empty main hand uses the unarmed skill.
+current modifier; an empty main hand uses the unarmed skill. The current player
+level and assumed opponent level appear in the dynamic summary.
 
 **These are Classic fallback mechanics, not confirmed Forever formulas.**
 Forever-specific formulas were not available when this experimental model
@@ -123,14 +125,14 @@ pre-expansion conventions below, not their current-retail formulas.
 
 | Mechanic | Implemented fallback |
 | --- | --- |
-| Spell hit | 16% bonus hit at level 60, leaving the Classic 1% unavoidable miss chance. Healing does not need hit. |
-| Physical hit | At 300 weapon skill, 9% special/single-wield hit cap; at 305, 6%. The first 1% bonus hit is ignored when the boss defense exceeds weapon skill by more than 10. |
+| Spell hit | 16% bonus hit against an opponent three levels higher, leaving the Classic 1% unavoidable miss chance. Healing does not need hit. |
+| Physical hit | At level 60, 300 weapon skill gives a 9% special/single-wield hit cap; at 305, 6%. The first 1% bonus hit is ignored when the opponent's defense exceeds weapon skill by more than 10. |
 | Dual-wield hit | White swings retain hit value after specials are capped; the assumed white cap is the special cap + 19 percentage points. |
 | Physical crit | The white-attack table accounts for misses, dodge, 40% boss glancing blows at trained level-60 skill, frontal parry for tanks, and assumed 4.8-point boss crit suppression at level 60. Crit retains value for specials after the white soft cap. More hit can also open space for white crits. |
 | Spell crit | Capped at 100% in the chosen primary school's character-sheet chance. |
-| Defense | 440 skill removes normal boss melee crits. This is a soft cap: defense still improves miss/dodge/parry/block until their table is saturated. |
-| Block/avoidance | Boss-adjusted miss + dodge + parry + block saturates at 100%: equivalent to the usual 102.4% equal-level sheet coverage at level 60. Block chance then has no additional table value; full avoidance can still replace blocked hits. Before saturation, pushing crushing blows off the table has extra value. The assumed base crush chance is 15% with trained level-60 defense; bonus defense does not directly reduce it. This is separate from the 440 defense threshold. |
-| Armor | 75% physical mitigation, at 17,265 effective armor against level 63. |
+| Defense | The estimated crit-immunity threshold is opponent level x 5 + 125 (440 at player level 60). This is a soft cap: defense still improves miss/dodge/parry/block until their table is saturated. |
+| Block/avoidance | Opponent-adjusted miss + dodge + parry + block saturates at 100%: equivalent to the usual 102.4% equal-level sheet coverage with a three-level difference. Block chance then has no additional table value; full avoidance can still replace blocked hits. Before saturation, pushing crushing blows off the table has extra value. The assumed base crush chance is 15% with fully trained defense; bonus defense does not directly reduce it. This is separate from the defense threshold. |
+| Armor | The 75% physical mitigation threshold is 3 x (400 + 85 x opponent level), or 17,265 effective armor against level 63. |
 | Spell penetration | Uses the same fixed or custom weight as static mode, including against a zero-resistance target. No resistance cap is modeled. |
 
 Caps do not generate accurate DPS weights by themselves. This mode adjusts the
@@ -139,8 +141,10 @@ approximation for melee, with equal main/off-hand white shares when dual-wieldin
 It is not a measured rotation breakdown. Full-avoidance outcomes use a common
 value; defense also receives a crit-prevention premium until crits are removed.
 These are scoring choices, not simulated damage or survival probabilities.
-The model is primarily intended for level-60 characters; lower-level estimates
-against the same level-63 boss are particularly approximate.
+The model uses the same fixed baseline stat weights at every level; it does not
+infer level-dependent rotations, talent availability or primary-stat conversions.
+Lower-level estimates are especially approximate, and the assumed opponent is
+not necessarily representative of ordinary leveling encounters.
 
 Cap-controlled rows (**Hit, Crit, Defense, Dodge, Parry, Block and Armor**, where
 present in the profile) are grey and marked **(locked)**.

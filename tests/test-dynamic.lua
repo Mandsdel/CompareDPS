@@ -36,9 +36,23 @@ close(weights.hit, 0)
 close(weights.crit, 12)
 spell.crit = 100
 close(addon.makeDynamicWeights(base, spell).crit, 0)
-close(addon.dynamicCaps(state({ domain = "Spell", level = 59 })).hit, 27)
+close(addon.dynamicCaps(state({ domain = "Spell", level = 59 })).hit, 16)
 spell.healer, spell.hit = true, 0
 close(addon.makeDynamicWeights(base, spell).hit, 0)
+
+-- A three-level opponent preserves the same caps for equally trained players.
+for _, level in ipairs({ 1, 20, 40, 59, 60 }) do
+    local trained = state({ level = level, skill = level * 5, offSkill = level * 5, dual = true })
+    local caps = addon.dynamicCaps(trained)
+    close(caps.hit, 9)
+    close(caps.whiteHit, 28)
+    close(caps.glance, 40)
+    close(caps.suppression, 4.8)
+    close(addon.dynamicCaps(state({ level = level, domain = "Spell" })).hit, 16)
+    assert(addon.dynamicSummary(addon.makeDynamicWeights(base, trained)):find(
+        "player level " .. level .. " vs level " .. (level + 3), 1, true))
+end
+close(addon.dynamicCaps(state({ level = 20, skill = 95 })).hit, 10)
 
 -- Given a saturated white table, specials retain crit value and hit opens crit space.
 weights = addon.makeDynamicWeights(base, state({ hit = 9, dual = true, crit = 60 }))
@@ -97,6 +111,22 @@ end
 context = addon.makeDynamicWeights(base, state({ armor = 17260 })).dynamicContext
 close(addon.dynamicScore(context, { armor = 10 }, 0.08), 0.04)
 
+-- Lower-level defensive thresholds and armor caps use the same opponent level.
+local lowTank = state({ level = 20, tank = true, skill = 100, offSkill = 100,
+    defense = 240, baseDefense = 100, armor = 7065 })
+weights = addon.makeDynamicWeights(base, lowTank)
+close(weights.armor, 0)
+local summary = addon.dynamicSummary(weights)
+assert(summary:find("player level 20 vs level 23", 1, true), summary)
+assert(summary:find("Defense 240 / 240 (crit immune)", 1, true), summary)
+assert(summary:find("armor 7065 / 7065", 1, true), summary)
+lowTank.defense, lowTank.armor = 239, 7060
+weights = addon.makeDynamicWeights(base, lowTank)
+assert(weights.defense > addon.makeDynamicWeights(base, state({ level = 20, tank = true,
+    skill = 100, offSkill = 100, defense = 240, baseDefense = 100, armor = 7060 })).defense)
+assert(addon.dynamicSummary(weights):find("crit vulnerable", 1, true))
+close(addon.dynamicScore(weights.dynamicContext, { armor = 10 }, 0.08), 0.04)
+
 -- Given absent or restricted APIs, dynamic mode reports an explicit reason.
 local snapshot, reason = addon.readDynamicState("Spell", "affliction")
 assert(not snapshot and reason:find("UnitLevel", 1, true))
@@ -131,6 +161,12 @@ close(snapshot.armor, 2000)
 assert(snapshot.dual and snapshot.tank)
 close(assert(addon.readDynamicState("Ranged", "marksmanship")).skill, 305)
 close(assert(addon.readDynamicState("Melee", "feral")).skill, 300)
+function UnitLevel() return 20 end
+snapshot = assert(addon.readDynamicState("Melee", "feral"))
+close(snapshot.skill, 100)
+close(addon.dynamicCaps(snapshot).hit, 9)
+assert(addon.dynamicSummary(addon.makeDynamicWeights(base, snapshot)):find("player level 20 vs level 23", 1, true))
+function UnitLevel() return 60 end
 equipped[16] = nil
 close(assert(addon.readDynamicState("Melee", "arms")).skill, 300)
 equipped[16] = 100
