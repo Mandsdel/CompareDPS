@@ -11,6 +11,7 @@ ItemRefShoppingTooltip1 = { lines = {} }
 ItemRefShoppingTooltip2 = { lines = {} }
 local playerClass = "WARLOCK"
 function UnitClass() return "Warlock", playerClass end
+function UnitIsUnit(unit, other) return unit == other or unit == "self-alias" end
 ITEM_CLASSES_ALLOWED = "Classes: %s"
 ITEM_RACES_ALLOWED = "Races: %s"
 function UnitRace() return "Human", "Human" end
@@ -511,6 +512,13 @@ GameTooltip.info = { getterName = "GetInventoryItem" }
 local worn = tooltip("item:1")
 assert(worn:find("Ring: 18.00 points", 1, true) and not worn:find("(slot", 1, true), worn)
 assert(GameTooltip.colors[3][1] == 1 and GameTooltip.colors[3][2] == 1 and GameTooltip.colors[3][3] == 1)
+for _, unit in ipairs({ "player", "self-alias" }) do
+    GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { unit, 11 } }
+    assert(not tooltip("item:1"):find("(slot", 1, true))
+end
+GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { "target", 11 } }
+local inspected = tooltip("item:1")
+assert(inspected:find("Ring: 18.00 points (slot 1: |cff40ff40+9.00|r, slot 2: |cff40ff40+9.00|r)", 1, true), inspected)
 GameTooltip.info = nil
 ShoppingTooltip1.lines = {}
 TooltipDataProcessor.callback(ShoppingTooltip1, { guid = "equipped-guid" })
@@ -645,6 +653,11 @@ assert(table.concat(ShoppingTooltip1.lines, "\n"):find("Off hand: 12.00 points",
 equipped[16], equipped[17] = "item:3", "item:5"
 GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { "player", 17 } }
 assert(tooltip("item:17"):find("Off hand: 12.00 points", 1, true))
+GameTooltip.info = { getterName = "GetInventoryItem", getterArgs = { "target", 17 } }
+local inspectedWeapon = tooltip("item:17")
+assert(inspectedWeapon:find("Main hand: 30.00 points", 1, true), inspectedWeapon)
+assert(inspectedWeapon:find("Off hand: 12.00 points", 1, true), inspectedWeapon)
+assert(inspectedWeapon:find("requires a one-hand weapon", 1, true), inspectedWeapon)
 GameTooltip.info = nil
 assert(tooltip("item:3"):find("weapon DPS, weapon speed", 1, true))
 assert(namespace.selectProfile("protection"))

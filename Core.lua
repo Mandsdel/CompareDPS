@@ -632,10 +632,22 @@ local function scoreItem(stats, weights, location, slot, removed)
     return score
 end
 
+local function inventoryUnitIsPlayer(info)
+    if secret(info) or type(info) ~= "table" or secret(info.getterName)
+        or info.getterName ~= "GetInventoryItem" or secret(info.getterArgs)
+        or type(info.getterArgs) ~= "table" then return nil end
+    local unit = info.getterArgs[1]
+    if secret(unit) or type(unit) ~= "string" then return nil end
+    if unit == "player" then return true end
+    if type(UnitIsUnit) ~= "function" then return nil end
+    local isPlayer = UnitIsUnit(unit, "player")
+    if secret(isPlayer) or type(isPlayer) ~= "boolean" then return nil end
+    return isPlayer
+end
+
 local function weaponSlot(tooltip, data, link)
     local info = type(tooltip.GetProcessingTooltipInfo) == "function" and tooltip:GetProcessingTooltipInfo()
-    if not secret(info) and type(info) == "table" and info.getterName == "GetInventoryItem"
-        and not secret(info.getterArgs) and type(info.getterArgs) == "table" then
+    if inventoryUnitIsPlayer(info) then
         local slot = info.getterArgs[2]
         if not secret(slot) and (slot == 16 or slot == 17) then return slot end
     end
@@ -675,7 +687,7 @@ local function itemComparison(tooltip, location, candidateScore, weights, recipe
         if secret(info) or type(info) ~= "table" or secret(info.getterName) then
             return nil
         end
-        if not comparedGetters[info.getterName] then
+        if not comparedGetters[info.getterName] and inventoryUnitIsPlayer(info) ~= false then
             return nil
         end
     end
